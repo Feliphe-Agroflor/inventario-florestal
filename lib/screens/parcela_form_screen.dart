@@ -19,6 +19,9 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
   final _identificadorController = TextEditingController();
   final _responsavelController = TextEditingController();
   final _observacoesController = TextEditingController();
+  final _tamanhoArboreoController = TextEditingController();
+  final _tamanhoArbustivoController = TextEditingController();
+  final _tamanhoHerbaceoController = TextEditingController();
 
   String? _fisionomia;
   String _metodo = 'Parcela';
@@ -47,6 +50,9 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
       _responsavelController.text = widget.parcela!.responsavel ?? '';
       _observacoesController.text = widget.parcela!.observacoes ?? '';
       _identificadorController.text = widget.parcela!.identificadorCampo ?? '';
+      _tamanhoArboreoController.text = widget.parcela!.tamanhoParcelaArboreo?.toStringAsFixed(2).replaceAll('.', ',') ?? '';
+      _tamanhoArbustivoController.text = widget.parcela!.tamanhoParcelaArbustivo?.toStringAsFixed(2).replaceAll('.', ',') ?? '';
+      _tamanhoHerbaceoController.text = widget.parcela!.tamanhoParcelaHerbaceo?.toStringAsFixed(2).replaceAll('.', ',') ?? '';
     }
   }
 
@@ -56,6 +62,9 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
     _identificadorController.dispose();
     _responsavelController.dispose();
     _observacoesController.dispose();
+    _tamanhoArboreoController.dispose();
+    _tamanhoArbustivoController.dispose();
+    _tamanhoHerbaceoController.dispose();
     super.dispose();
   }
 
@@ -94,6 +103,15 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
           ? null
           : _identificadorController.text.trim(),
       metodo: _metodo,
+      tamanhoParcelaArboreo: _metodo == 'Parcela' && _tamanhoArboreoController.text.trim().isNotEmpty
+          ? double.tryParse(_tamanhoArboreoController.text.trim().replaceAll(',', '.'))
+          : null,
+      tamanhoParcelaArbustivo: _metodo == 'Parcela' && _tamanhoArbustivoController.text.trim().isNotEmpty
+          ? double.tryParse(_tamanhoArbustivoController.text.trim().replaceAll(',', '.'))
+          : null,
+      tamanhoParcelaHerbaceo: _metodo == 'Parcela' && _tamanhoHerbaceoController.text.trim().isNotEmpty
+          ? double.tryParse(_tamanhoHerbaceoController.text.trim().replaceAll(',', '.'))
+          : null,
     );
 
     await DatabaseHelper.instance.insertParcela(parcela);
@@ -167,6 +185,39 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
                     }
                     return null;
                   },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _tamanhoArboreoController,
+                  decoration: const InputDecoration(
+                    labelText: 'Tamanho da Parcela - Arbóreo (m²)',
+                    hintText: 'Ex: 400',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.forest),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _tamanhoArbustivoController,
+                  decoration: const InputDecoration(
+                    labelText: 'Tamanho da Parcela - Arbustivo (m²)',
+                    hintText: 'Ex: 100',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.grass),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _tamanhoHerbaceoController,
+                  decoration: const InputDecoration(
+                    labelText: 'Tamanho da Parcela - Herbáceo (m²)',
+                    hintText: 'Ex: 25',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.eco),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 ),
               ],
               const SizedBox(height: 16),

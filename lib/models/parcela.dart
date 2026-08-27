@@ -28,6 +28,15 @@ class Parcela extends HiveObject {
   @HiveField(8)
   String metodo;
 
+  @HiveField(9)
+  double? tamanhoParcelaArboreo;
+
+  @HiveField(10)
+  double? tamanhoParcelaArbustivo;
+
+  @HiveField(11)
+  double? tamanhoParcelaHerbaceo;
+
   Parcela({
     required this.id,
     required this.nomeParcela,
@@ -37,5 +46,8 @@ class Parcela extends HiveObject {
     this.observacoes,
     this.identificadorCampo,
     this.metodo = 'Parcela',
+    this.tamanhoParcelaArboreo,
+    this.tamanhoParcelaArbustivo,
+    this.tamanhoParcelaHerbaceo,
   });
 }
