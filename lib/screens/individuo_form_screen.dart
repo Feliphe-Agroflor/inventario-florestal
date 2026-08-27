@@ -331,7 +331,7 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
         title: Text(
           _isEditing
               ? 'Editar ${_isFloristica ? "Espécie" : "Indivíduo"} Nº ${widget.individuo!.numero}'
-              : 'Nova${_isFloristica ? " Espécie" : " Indivíduo"} - ${widget.estrato}',
+              : '${_isFloristica ? "Nova Espécie" : "Novo Indivíduo"} - ${widget.estrato}',
         ),
         backgroundColor: Colors.green[800],
         foregroundColor: Colors.white,
