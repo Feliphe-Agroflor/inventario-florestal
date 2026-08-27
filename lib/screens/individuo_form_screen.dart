@@ -54,7 +54,7 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
       (widget.parcela.fisionomia == 'Cerrado' && widget.estrato == 'Arbóreo') ||
       (widget.parcela.fisionomia == 'Campo Rupestre' &&
           (widget.estrato == 'Arbóreo' || widget.estrato == 'Arbustivo')) ||
-      (widget.parcela.metodo == 'Censo' && widget.estrato == 'Arbóreo' &&
+      (widget.parcela.metodo == 'Censo' && (widget.estrato == 'Arbóreo' || widget.estrato == 'Censo') &&
           (widget.parcela.fisionomia == 'Cerrado' || widget.parcela.fisionomia == 'Campo Rupestre' || widget.parcela.fisionomia == 'Árvores isoladas'));
 
   bool get _capObrigatorio =>

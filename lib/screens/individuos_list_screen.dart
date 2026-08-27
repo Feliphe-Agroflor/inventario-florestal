@@ -368,7 +368,9 @@ class _IndividuosListScreenState extends State<IndividuosListScreen>
     final requiresDiametroCopa =
         (widget.parcela.fisionomia == 'Cerrado' && widget.estrato == 'Arbóreo') ||
         (widget.parcela.fisionomia == 'Campo Rupestre' &&
-            (widget.estrato == 'Arbóreo' || widget.estrato == 'Arbustivo'));
+            (widget.estrato == 'Arbóreo' || widget.estrato == 'Arbustivo')) ||
+        (widget.parcela.metodo == 'Censo' && (widget.estrato == 'Arbóreo' || widget.estrato == 'Censo') &&
+            (widget.parcela.fisionomia == 'Cerrado' || widget.parcela.fisionomia == 'Campo Rupestre' || widget.parcela.fisionomia == 'Árvores isoladas'));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
