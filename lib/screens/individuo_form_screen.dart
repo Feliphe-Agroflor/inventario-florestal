@@ -38,6 +38,7 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
   final _diametroCopa1Controller = TextEditingController();
   final _diametroCopa2Controller = TextEditingController();
   final _numeroGpsController = TextEditingController();
+  final _numeroIndividuosEspecieController = TextEditingController();
 
   List<_FusteEntry> _fustes = [];
   List<String> _nomesComuns = [];
@@ -84,6 +85,7 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
       _diametroCopa2Controller.text =
           widget.individuo!.diametroCopa2?.toStringAsFixed(2).replaceAll('.', ',') ?? '';
       _numeroGpsController.text = widget.individuo!.numeroGps?.toString() ?? '';
+      _numeroIndividuosEspecieController.text = widget.individuo!.numeroIndividuosEspecie?.toString() ?? '';
     if (!_isHerbaceo && !_isFloristica) {
         _loadFustes();
       }
@@ -127,6 +129,7 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
     _diametroCopa1Controller.dispose();
     _diametroCopa2Controller.dispose();
     _numeroGpsController.dispose();
+    _numeroIndividuosEspecieController.dispose();
     super.dispose();
   }
 
@@ -297,6 +300,9 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
       numeroGps: widget.parcela.metodo == 'Censo' && _numeroGpsController.text.trim().isNotEmpty
           ? int.tryParse(_numeroGpsController.text.trim())
           : null,
+      numeroIndividuosEspecie: _isHerbaceo && widget.parcela.fisionomia == 'Campo Rupestre' && _numeroIndividuosEspecieController.text.trim().isNotEmpty
+          ? int.tryParse(_numeroIndividuosEspecieController.text.trim())
+          : null,
     );
 
     await DatabaseHelper.instance.insertIndividuo(individuo);
@@ -391,6 +397,32 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
                       if (int.tryParse(value.trim()) == null) {
                         return 'Insira um número válido';
                       }
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              if (_isHerbaceo && widget.parcela.fisionomia == 'Campo Rupestre') ...[
+                TextFormField(
+                  controller: _numeroIndividuosEspecieController,
+                  decoration: const InputDecoration(
+                    labelText: 'Número de indivíduos da espécie *',
+                    hintText: 'Quantidade total desta espécie',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.group),
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Insira o número de indivíduos';
+                    }
+                    if (int.tryParse(value.trim()) == null) {
+                      return 'Insira um número válido';
                     }
                     return null;
                   },
