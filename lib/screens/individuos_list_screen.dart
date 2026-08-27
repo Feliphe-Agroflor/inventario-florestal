@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../database/database_helper.dart';
 import '../models/parcela.dart';
@@ -199,26 +198,16 @@ class _IndividuosListScreenState extends State<IndividuosListScreen>
                   elevation: 2,
                   margin: const EdgeInsets.symmetric(vertical: 4),
                   child: ListTile(
-                    leading: individuo.fotos.isNotEmpty
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(25),
-                            child: Image.memory(
-                              base64Decode(individuo.fotos.first),
-                              width: 50,
-                              height: 50,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : CircleAvatar(
-                            backgroundColor: Colors.green[100],
-                            child: Text(
-                              '${individuo.numero}',
-                              style: TextStyle(
-                                color: Colors.green[800],
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                    leading: CircleAvatar(
+                        backgroundColor: Colors.green[100],
+                        child: Text(
+                          '${individuo.numero}',
+                          style: TextStyle(
+                            color: Colors.green[800],
+                            fontWeight: FontWeight.bold,
                           ),
+                        ),
+                      ),
                     title: Row(
                       children: [
                         Expanded(
