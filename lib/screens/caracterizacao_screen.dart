@@ -745,7 +745,7 @@ class _CaracterizacaoScreenState extends State<CaracterizacaoScreen> {
         const SizedBox(height: 8),
         _buildCustomScaleField(
           'Nº estratos',
-          ['Ausente', 'Dossel e\nsub-bosque', 'Dossel,\nsub-dossel\ne sub-bosque'],
+          ['Ausente', 'Dossel e sub-bosque', 'Dossel, sub-dossel e sub-bosque'],
           _numeroEstratos,
           (v) => setState(() => _numeroEstratos = v),
         ),
