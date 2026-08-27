@@ -42,7 +42,7 @@ class _ExportScreenState extends State<ExportScreen> {
 
       rows.add(
         'Registro;Método;Identificador Campo;Estrato;Fisionomia;Data Coleta;Responsável;'
-        'Nº Indivíduo;Nome Comum;Nome Científico;Família;'
+        'Nº Indivíduo;Nº GPS;Nome Comum;Nome Científico;Família;'
         'Nº Fuste;Altura (m);CAP (cm);DAP (cm);Nº Indivíduos / % Cobertura;'
         'Diâm. Copa 1 (m);Diâm. Copa 2 (m);Observações',
       );
@@ -62,6 +62,7 @@ class _ExportScreenState extends State<ExportScreen> {
               DateFormat('dd/MM/yyyy').format(parcela.dataColeta),
               _escapeCsv(parcela.responsavel ?? ''),
               '${individuo.numero}',
+              '${individuo.numeroGps ?? ''}',
               _escapeCsv(individuo.nomeComum),
               _escapeCsv(individuo.nomeCientifico),
               _escapeCsv(individuo.familia),
@@ -88,6 +89,7 @@ class _ExportScreenState extends State<ExportScreen> {
                 DateFormat('dd/MM/yyyy').format(parcela.dataColeta),
                 _escapeCsv(parcela.responsavel ?? ''),
                 '${individuo.numero}',
+                '${individuo.numeroGps ?? ''}',
                 _escapeCsv(individuo.nomeComum),
                 _escapeCsv(individuo.nomeCientifico),
                 _escapeCsv(individuo.familia),
@@ -111,6 +113,7 @@ class _ExportScreenState extends State<ExportScreen> {
                   DateFormat('dd/MM/yyyy').format(parcela.dataColeta),
                   _escapeCsv(parcela.responsavel ?? ''),
                   '${individuo.numero}',
+                  '${individuo.numeroGps ?? ''}',
                   _escapeCsv(individuo.nomeComum),
                   _escapeCsv(individuo.nomeCientifico),
                   _escapeCsv(individuo.familia),

@@ -114,6 +114,14 @@ class DatabaseHelper {
     return individuos.map((i) => i.numero).reduce((a, b) => a > b ? a : b) + 1;
   }
 
+  int getNextNumeroGps(String parcelaId, String estrato) {
+    final individuos = getIndividuosByParcela(parcelaId)
+        .where((i) => i.estrato == estrato && i.numeroGps != null)
+        .toList();
+    if (individuos.isEmpty) return 1;
+    return individuos.map((i) => i.numeroGps!).reduce((a, b) => a > b ? a : b) + 1;
+  }
+
   // CRUD Fustes
   Future<void> insertFuste(Fuste fuste) async {
     final box = Hive.box<Fuste>(_fustesBox);

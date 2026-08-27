@@ -37,6 +37,7 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
   final _numeroIndividuosController = TextEditingController();
   final _diametroCopa1Controller = TextEditingController();
   final _diametroCopa2Controller = TextEditingController();
+  final _numeroGpsController = TextEditingController();
 
   List<_FusteEntry> _fustes = [];
   List<String> _nomesComuns = [];
@@ -82,6 +83,7 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
           widget.individuo!.diametroCopa1?.toStringAsFixed(2).replaceAll('.', ',') ?? '';
       _diametroCopa2Controller.text =
           widget.individuo!.diametroCopa2?.toStringAsFixed(2).replaceAll('.', ',') ?? '';
+      _numeroGpsController.text = widget.individuo!.numeroGps?.toString() ?? '';
     if (!_isHerbaceo && !_isFloristica) {
         _loadFustes();
       }
@@ -89,6 +91,11 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
       _numeroController.text =
           DatabaseHelper.instance.getNextIndividuoNumero(widget.parcela.id, widget.estrato)
               .toString();
+      if (widget.parcela.metodo == 'Censo') {
+        _numeroGpsController.text =
+            DatabaseHelper.instance.getNextNumeroGps(widget.parcela.id, widget.estrato)
+                .toString();
+      }
       if (!_isHerbaceo && !_isFloristica) {
         _fustes = [_FusteEntry(altura: 0, cap: 0)];
       }
@@ -119,6 +126,7 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
     _numeroIndividuosController.dispose();
     _diametroCopa1Controller.dispose();
     _diametroCopa2Controller.dispose();
+    _numeroGpsController.dispose();
     super.dispose();
   }
 
@@ -286,6 +294,9 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
           ? double.tryParse(_diametroCopa2Controller.text.trim().replaceAll(',', '.'))
           : null,
       subParcela: widget.subParcela,
+      numeroGps: widget.parcela.metodo == 'Censo' && _numeroGpsController.text.trim().isNotEmpty
+          ? int.tryParse(_numeroGpsController.text.trim())
+          : null,
     );
 
     await DatabaseHelper.instance.insertIndividuo(individuo);
@@ -362,6 +373,30 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
                 },
               ),
               const SizedBox(height: 16),
+
+              if (widget.parcela.metodo == 'Censo') ...[
+                TextFormField(
+                  controller: _numeroGpsController,
+                  decoration: const InputDecoration(
+                    labelText: 'Número do GPS *',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.gps_fixed),
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (widget.parcela.metodo == 'Censo') {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Insira o número do GPS';
+                      }
+                      if (int.tryParse(value.trim()) == null) {
+                        return 'Insira um número válido';
+                      }
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
 
               if (_isHerbaceo) ...[
                 TextFormField(

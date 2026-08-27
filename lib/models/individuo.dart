@@ -46,6 +46,9 @@ class Individuo extends HiveObject {
   @HiveField(13)
   int subParcela;
 
+  @HiveField(14)
+  int? numeroGps;
+
   Individuo({
     required this.id,
     required this.parcelaId,
@@ -61,5 +64,6 @@ class Individuo extends HiveObject {
     this.diametroCopa1,
     this.diametroCopa2,
     this.subParcela = 1,
+    this.numeroGps,
   });
 }

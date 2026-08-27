@@ -39,13 +39,14 @@ class IndividuoAdapter extends TypeAdapter<Individuo> {
       diametroCopa1: fields[11] as double?,
       diametroCopa2: fields[12] as double?,
       subParcela: fields[13] != null ? fields[13] as int : 1,
+      numeroGps: fields[14] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Individuo obj) {
     writer
-      ..writeByte(14)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -73,7 +74,9 @@ class IndividuoAdapter extends TypeAdapter<Individuo> {
       ..writeByte(12)
       ..write(obj.diametroCopa2)
       ..writeByte(13)
-      ..write(obj.subParcela);
+      ..write(obj.subParcela)
+      ..writeByte(14)
+      ..write(obj.numeroGps);
   }
 
   @override
