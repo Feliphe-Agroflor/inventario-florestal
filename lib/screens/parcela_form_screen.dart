@@ -22,6 +22,7 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
   final _tamanhoArboreoController = TextEditingController();
   final _tamanhoArbustivoController = TextEditingController();
   final _tamanhoHerbaceoController = TextEditingController();
+  final _localidadeController = TextEditingController();
 
   String? _fisionomia;
   String _metodo = 'Parcela';
@@ -53,6 +54,7 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
       _tamanhoArboreoController.text = widget.parcela!.tamanhoParcelaArboreo?.toStringAsFixed(2).replaceAll('.', ',') ?? '';
       _tamanhoArbustivoController.text = widget.parcela!.tamanhoParcelaArbustivo?.toStringAsFixed(2).replaceAll('.', ',') ?? '';
       _tamanhoHerbaceoController.text = widget.parcela!.tamanhoParcelaHerbaceo?.toStringAsFixed(2).replaceAll('.', ',') ?? '';
+      _localidadeController.text = widget.parcela!.localidade ?? '';
     }
   }
 
@@ -65,6 +67,7 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
     _tamanhoArboreoController.dispose();
     _tamanhoArbustivoController.dispose();
     _tamanhoHerbaceoController.dispose();
+    _localidadeController.dispose();
     super.dispose();
   }
 
@@ -112,6 +115,9 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
       tamanhoParcelaHerbaceo: _metodo == 'Parcela' && _tamanhoHerbaceoController.text.trim().isNotEmpty
           ? double.tryParse(_tamanhoHerbaceoController.text.trim().replaceAll(',', '.'))
           : null,
+      localidade: _localidadeController.text.trim().isEmpty
+          ? null
+          : _localidadeController.text.trim(),
     );
 
     await DatabaseHelper.instance.insertParcela(parcela);
@@ -242,6 +248,16 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
                   }
                   return null;
                 },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _localidadeController,
+                decoration: const InputDecoration(
+                  labelText: 'Localidade',
+                  hintText: 'Ex: Cachoeira, Trilha, etc.',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.location_on),
+                ),
               ),
               const SizedBox(height: 16),
               Autocomplete<String>(
