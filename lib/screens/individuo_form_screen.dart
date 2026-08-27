@@ -97,7 +97,7 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
       _numeroController.text =
           DatabaseHelper.instance.getNextIndividuoNumero(widget.parcela.id, widget.estrato)
               .toString();
-      if (widget.parcela.metodo == 'Censo') {
+      if (widget.parcela.metodo == 'Censo' && widget.estrato == 'Censo') {
         _numeroGpsController.text =
             DatabaseHelper.instance.getNextNumeroGps(widget.parcela.id, widget.estrato)
                 .toString();
@@ -302,7 +302,7 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
           ? double.tryParse(_diametroCopa2Controller.text.trim().replaceAll(',', '.'))
           : null,
       subParcela: widget.subParcela,
-      numeroGps: widget.parcela.metodo == 'Censo' && _numeroGpsController.text.trim().isNotEmpty
+      numeroGps: widget.parcela.metodo == 'Censo' && widget.estrato == 'Censo' && _numeroGpsController.text.trim().isNotEmpty
           ? int.tryParse(_numeroGpsController.text.trim())
           : null,
       numeroIndividuosEspecie: _isHerbaceo && widget.parcela.fisionomia == 'Campo Rupestre' && _numeroIndividuosEspecieController.text.trim().isNotEmpty
@@ -389,7 +389,7 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
               ),
               const SizedBox(height: 16),
 
-              if (widget.parcela.metodo == 'Censo') ...[
+              if (widget.parcela.metodo == 'Censo' && widget.estrato == 'Censo') ...[
                 TextFormField(
                   controller: _numeroGpsController,
                   decoration: const InputDecoration(
@@ -399,7 +399,7 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) {
-      if (widget.parcela.metodo == 'Censo') {
+      if (widget.parcela.metodo == 'Censo' && widget.estrato == 'Censo') {
                       if (value == null || value.trim().isEmpty) {
                         return 'Insira o número do GPS';
                       }
