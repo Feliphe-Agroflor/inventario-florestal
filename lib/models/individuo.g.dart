@@ -41,13 +41,15 @@ class IndividuoAdapter extends TypeAdapter<Individuo> {
       subParcela: fields[13] != null ? fields[13] as int : 1,
       numeroGps: fields[14] as int?,
       numeroIndividuosEspecie: fields[15] as int?,
+      epifitas: fields[16] as bool?,
+      epifitasDetalhes: fields[17] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Individuo obj) {
     writer
-      ..writeByte(16)
+      ..writeByte(18)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -79,7 +81,11 @@ class IndividuoAdapter extends TypeAdapter<Individuo> {
       ..writeByte(14)
       ..write(obj.numeroGps)
       ..writeByte(15)
-      ..write(obj.numeroIndividuosEspecie);
+      ..write(obj.numeroIndividuosEspecie)
+      ..writeByte(16)
+      ..write(obj.epifitas)
+      ..writeByte(17)
+      ..write(obj.epifitasDetalhes);
   }
 
   @override

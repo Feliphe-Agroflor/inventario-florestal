@@ -44,7 +44,7 @@ class _ExportScreenState extends State<ExportScreen> {
         'Registro;Método;Identificador Campo;Estrato;Fisionomia;Data Coleta;Responsável;'
         'Nº Indivíduo;Nº GPS;Nome Comum;Nome Científico;Família;'
         'Nº Fuste;Altura (m);CAP (cm);DAP (cm);Nº Indivíduos / % Cobertura;'
-        'Diâm. Copa 1 (m);Diâm. Copa 2 (m);Nº Indivíduos Espécie;Observações',
+        'Diâm. Copa 1 (m);Diâm. Copa 2 (m);Nº Indivíduos Espécie;Epífitas;Detalhes Epífitas;Observações',
       );
 
       for (var parcela in _parcelas) {
@@ -74,6 +74,8 @@ class _ExportScreenState extends State<ExportScreen> {
               '',
               '',
               '${individuo.numeroIndividuosEspecie ?? ''}',
+              '',
+              '',
               _escapeCsv(individuo.observacoes ?? ''),
             ].join(';'));
           } else {
@@ -102,6 +104,8 @@ class _ExportScreenState extends State<ExportScreen> {
                 individuo.diametroCopa1 != null ? _formatDecimal(individuo.diametroCopa1!) : '',
                 individuo.diametroCopa2 != null ? _formatDecimal(individuo.diametroCopa2!) : '',
                 '${individuo.numeroIndividuosEspecie ?? ''}',
+                individuo.epifitas == true ? 'Sim' : (individuo.epifitas == false ? 'Não' : ''),
+                _escapeCsv(individuo.epifitasDetalhes ?? ''),
                 _escapeCsv(individuo.observacoes ?? ''),
               ].join(';'));
             } else {
@@ -127,6 +131,8 @@ class _ExportScreenState extends State<ExportScreen> {
                   individuo.diametroCopa1 != null ? _formatDecimal(individuo.diametroCopa1!) : '',
                   individuo.diametroCopa2 != null ? _formatDecimal(individuo.diametroCopa2!) : '',
                   '${individuo.numeroIndividuosEspecie ?? ''}',
+                  individuo.epifitas == true ? 'Sim' : (individuo.epifitas == false ? 'Não' : ''),
+                  _escapeCsv(individuo.epifitasDetalhes ?? ''),
                   _escapeCsv(individuo.observacoes ?? ''),
                 ].join(';'));
               }

@@ -39,6 +39,7 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
   final _diametroCopa2Controller = TextEditingController();
   final _numeroGpsController = TextEditingController();
   final _numeroIndividuosEspecieController = TextEditingController();
+  final _epifitasDetalhesController = TextEditingController();
 
   List<_FusteEntry> _fustes = [];
   List<String> _nomesComuns = [];
@@ -48,6 +49,7 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
 
   DateTime _dataColeta = DateTime.now();
   bool _isEditing = false;
+  bool? _epifitas;
   final ImagePicker _picker = ImagePicker();
 
   bool get _isHerbaceo => widget.estrato == 'Herbáceo';
@@ -86,6 +88,8 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
           widget.individuo!.diametroCopa2?.toStringAsFixed(2).replaceAll('.', ',') ?? '';
       _numeroGpsController.text = widget.individuo!.numeroGps?.toString() ?? '';
       _numeroIndividuosEspecieController.text = widget.individuo!.numeroIndividuosEspecie?.toString() ?? '';
+      _epifitas = widget.individuo!.epifitas;
+      _epifitasDetalhesController.text = widget.individuo!.epifitasDetalhes ?? '';
     if (!_isHerbaceo && !_isFloristica) {
         _loadFustes();
       }
@@ -130,6 +134,7 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
     _diametroCopa2Controller.dispose();
     _numeroGpsController.dispose();
     _numeroIndividuosEspecieController.dispose();
+    _epifitasDetalhesController.dispose();
     super.dispose();
   }
 
@@ -302,6 +307,10 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
           : null,
       numeroIndividuosEspecie: _isHerbaceo && widget.parcela.fisionomia == 'Campo Rupestre' && _numeroIndividuosEspecieController.text.trim().isNotEmpty
           ? int.tryParse(_numeroIndividuosEspecieController.text.trim())
+          : null,
+      epifitas: !_isHerbaceo && !_isFloristica ? _epifitas : null,
+      epifitasDetalhes: !_isHerbaceo && !_isFloristica && _epifitas == true && _epifitasDetalhesController.text.trim().isNotEmpty
+          ? _epifitasDetalhesController.text.trim()
           : null,
     );
 
@@ -823,6 +832,73 @@ class _IndividuoFormScreenState extends State<IndividuoFormScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+
+              if (!_isHerbaceo && !_isFloristica) ...[
+                Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.eco, color: Colors.green[800]),
+                            const SizedBox(width: 8),
+                            Text(
+                              'EPÍFITAS',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green[800],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Text('Presença de epífitas: '),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: Text('Sim', style: TextStyle(color: _epifitas == true ? Colors.white : Colors.black87)),
+                              selected: _epifitas == true,
+                              selectedColor: Colors.green[800],
+                              onSelected: (_) => setState(() {
+                                _epifitas = true;
+                              }),
+                            ),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: Text('Não', style: TextStyle(color: _epifitas == false ? Colors.white : Colors.black87)),
+                              selected: _epifitas == false,
+                              selectedColor: Colors.green[800],
+                              onSelected: (_) => setState(() {
+                                _epifitas = false;
+                                _epifitasDetalhesController.clear();
+                              }),
+                            ),
+                          ],
+                        ),
+                        if (_epifitas == true) ...[
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _epifitasDetalhesController,
+                            decoration: const InputDecoration(
+                              labelText: 'Quais epífitas?',
+                              hintText: 'Ex: Bromélia, orquídea, samambaias...',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.edit_note),
+                            ),
+                            maxLines: 2,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
 
               TextFormField(

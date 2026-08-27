@@ -52,6 +52,12 @@ class Individuo extends HiveObject {
   @HiveField(15)
   int? numeroIndividuosEspecie;
 
+  @HiveField(16)
+  bool? epifitas;
+
+  @HiveField(17)
+  String? epifitasDetalhes;
+
   Individuo({
     required this.id,
     required this.parcelaId,
@@ -69,5 +75,7 @@ class Individuo extends HiveObject {
     this.subParcela = 1,
     this.numeroGps,
     this.numeroIndividuosEspecie,
+    this.epifitas,
+    this.epifitasDetalhes,
   });
 }
