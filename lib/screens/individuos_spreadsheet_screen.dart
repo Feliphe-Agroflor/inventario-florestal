@@ -495,13 +495,18 @@ class _IndividuosSpreadsheetScreenState
               width: w[i++],
               options: [],
               keyboardType: TextInputType.number,
-              readOnly: false,
-              onFieldChanged: (v) {
-                final n = int.tryParse(v);
-                if (n != null && n >= 1) {
-                  _updateFusteCount(ind, n);
-                }
-              },
+              readOnly: !row.isFirstFuste,
+              textStyle: row.isFirstFuste
+                  ? null
+                  : TextStyle(fontSize: 12, color: Colors.grey[600]),
+              onSubmitted: row.isFirstFuste
+                  ? (v) {
+                      final n = int.tryParse(v);
+                      if (n != null && n >= 1) {
+                        _updateFusteCount(ind, n);
+                      }
+                    }
+                  : null,
             ),
           _cellWithSuggestions(
             value: ind.nomeComum,
