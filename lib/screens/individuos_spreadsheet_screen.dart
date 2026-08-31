@@ -119,8 +119,15 @@ class _IndividuosSpreadsheetScreenState
       lista.add(_IndividuoRow(individuo: ind, fustes: fustes));
     }
 
+    setState(() {
+      _individuos = lista;
+    });
+    _rebuildDisplayRows();
+  }
+
+  void _rebuildDisplayRows() {
     List<_DisplayRow> rows = [];
-    for (var row in lista) {
+    for (var row in _individuos) {
       if (_showFustes && row.fustes.isNotEmpty) {
         for (int f = 0; f < row.fustes.length; f++) {
           rows.add(_DisplayRow(
@@ -137,9 +144,7 @@ class _IndividuosSpreadsheetScreenState
         ));
       }
     }
-
     setState(() {
-      _individuos = lista;
       _displayRows = rows;
     });
   }
@@ -243,6 +248,18 @@ class _IndividuosSpreadsheetScreenState
     final currentFustes =
         DatabaseHelper.instance.getFustesByIndividuo(individuo.id);
     final currentCount = currentFustes.length;
+
+    if (newCount < currentCount) {
+      for (int i = currentCount - 1; i >= newCount; i--) {
+        await DatabaseHelper.instance.deleteFuste(currentFustes[i].id);
+      }
+    }
+
+    if (currentFustes.isNotEmpty) {
+      currentFustes[0].numeroFuste = newCount;
+      await DatabaseHelper.instance.insertFuste(currentFustes[0]);
+    }
+
     if (newCount > currentCount) {
       for (int i = currentCount; i < newCount; i++) {
         await DatabaseHelper.instance.insertFuste(Fuste(
@@ -253,12 +270,18 @@ class _IndividuosSpreadsheetScreenState
           cap: 0,
         ));
       }
-    } else if (newCount < currentCount) {
-      for (int i = currentCount - 1; i >= newCount; i--) {
-        await DatabaseHelper.instance.deleteFuste(currentFustes[i].id);
-      }
     }
-    _loadData();
+
+    final updatedFustes =
+        DatabaseHelper.instance.getFustesByIndividuo(individuo.id);
+    final idx = _individuos.indexWhere((r) => r.individuo.id == individuo.id);
+    if (idx != -1) {
+      _individuos[idx] = _IndividuoRow(
+        individuo: individuo,
+        fustes: updatedFustes,
+      );
+    }
+    _rebuildDisplayRows();
   }
 
   Future<void> _selectDate(Individuo individuo) async {
@@ -469,6 +492,13 @@ class _IndividuosSpreadsheetScreenState
     final bgColor = indIndex.isEven ? Colors.white : Colors.grey[50];
     int i = 0;
 
+    final fusteCount = _showFustes && fuste != null
+        ? _individuos
+            .firstWhere((r) => r.individuo.id == ind.id)
+            .fustes
+            .length
+        : 0;
+
     return Container(
       color: bgColor,
       child: Row(
@@ -487,11 +517,14 @@ class _IndividuosSpreadsheetScreenState
                 color: Colors.green[800],
                 fontSize: 13,
               ),
+              cellKey: 'num_${ind.id}',
               onSubmitted: (v) => _updateNumeroIndividuo(ind, v),
             ),
           if (_showFustes)
             _cellWithSuggestions(
-              value: fuste != null ? '${fuste.numeroFuste}' : '1',
+              value: row.isFirstFuste
+                  ? '$fusteCount'
+                  : '${fuste?.numeroFuste ?? ""}',
               width: w[i++],
               options: [],
               keyboardType: TextInputType.number,
@@ -499,6 +532,7 @@ class _IndividuosSpreadsheetScreenState
               textStyle: row.isFirstFuste
                   ? null
                   : TextStyle(fontSize: 12, color: Colors.grey[600]),
+              cellKey: 'fuste_${ind.id}_${fuste?.id ?? "0"}',
               onSubmitted: row.isFirstFuste
                   ? (v) {
                       final n = int.tryParse(v);
@@ -514,6 +548,7 @@ class _IndividuosSpreadsheetScreenState
             options: DatabaseHelper.instance.getNomesComuns(),
             keyboardType: TextInputType.text,
             readOnly: false,
+            cellKey: 'nome_${ind.id}',
             onFieldChanged: (v) {
               ind.nomeComum = v;
               _saveIndividuo(ind);
@@ -526,6 +561,7 @@ class _IndividuosSpreadsheetScreenState
             keyboardType: TextInputType.text,
             readOnly: false,
             fontStyle: FontStyle.italic,
+            cellKey: 'cient_${ind.id}',
             onFieldChanged: (v) {
               ind.nomeCientifico = v;
               _saveIndividuo(ind);
@@ -537,6 +573,7 @@ class _IndividuosSpreadsheetScreenState
             options: DatabaseHelper.instance.getFamilias(),
             keyboardType: TextInputType.text,
             readOnly: false,
+            cellKey: 'fam_${ind.id}',
             onFieldChanged: (v) {
               ind.familia = v;
               _saveIndividuo(ind);
@@ -549,6 +586,7 @@ class _IndividuosSpreadsheetScreenState
               options: [],
               keyboardType: TextInputType.number,
               readOnly: false,
+              cellKey: 'gps_${ind.id}',
               onFieldChanged: (v) {
                 ind.numeroGps = int.tryParse(v);
                 _saveIndividuo(ind);
@@ -562,6 +600,7 @@ class _IndividuosSpreadsheetScreenState
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               readOnly: false,
+              cellKey: 'nind_${ind.id}',
               onFieldChanged: (v) {
                 ind.numeroIndividuos = int.tryParse(v);
                 _saveIndividuo(ind);
@@ -574,6 +613,7 @@ class _IndividuosSpreadsheetScreenState
               options: [],
               keyboardType: TextInputType.number,
               readOnly: false,
+              cellKey: 'nindE_${ind.id}',
               onFieldChanged: (v) {
                 ind.numeroIndividuosEspecie = int.tryParse(v);
                 _saveIndividuo(ind);
@@ -589,6 +629,7 @@ class _IndividuosSpreadsheetScreenState
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               readOnly: false,
+              cellKey: 'alt_${fuste.id}',
               onFieldChanged: (v) {
                 fuste.altura =
                     double.tryParse(v.replaceAll(',', '.')) ?? 0;
@@ -604,6 +645,7 @@ class _IndividuosSpreadsheetScreenState
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               readOnly: false,
+              cellKey: 'cap_${fuste.id}',
               onFieldChanged: (v) {
                 fuste.cap =
                     double.tryParse(v.replaceAll(',', '.')) ?? 0;
@@ -625,6 +667,7 @@ class _IndividuosSpreadsheetScreenState
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               readOnly: false,
+              cellKey: 'copa1_${ind.id}',
               onFieldChanged: (v) {
                 ind.diametroCopa1 =
                     double.tryParse(v.replaceAll(',', '.'));
@@ -641,6 +684,7 @@ class _IndividuosSpreadsheetScreenState
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               readOnly: false,
+              cellKey: 'copa2_${ind.id}',
               onFieldChanged: (v) {
                 ind.diametroCopa2 =
                     double.tryParse(v.replaceAll(',', '.'));
@@ -669,9 +713,10 @@ class _IndividuosSpreadsheetScreenState
     TextStyle? textStyle,
     ValueChanged<String>? onFieldChanged,
     ValueChanged<String>? onSubmitted,
+    String? cellKey,
   }) {
     return _AutocompleteCell(
-      key: ValueKey('${value}_$width'),
+      key: cellKey != null ? ValueKey(cellKey) : null,
       initialValue: value,
       width: width,
       options: options,
