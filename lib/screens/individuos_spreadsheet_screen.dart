@@ -807,6 +807,7 @@ class _IndividuosSpreadsheetScreenState
               onChanged: (v) {
                 fuste.epifitas = v;
                 _saveFuste(fuste);
+                setState(() {});
               },
             )
           : const Text('-', style: TextStyle(fontSize: 11)),
@@ -947,11 +948,13 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.initialValue);
+    _focusNode.addListener(_onFocusChange);
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.removeListener(_onFocusChange);
     _focusNode.dispose();
     _removeOverlay();
     super.dispose();
@@ -968,6 +971,12 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
       if (hasFocus && sel.isValid) {
         _controller.selection = sel;
       }
+    }
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus) {
+      _removeOverlay();
     }
   }
 
