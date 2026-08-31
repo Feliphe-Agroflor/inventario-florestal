@@ -221,7 +221,7 @@ class _IndividuosSpreadsheetScreenState
     }
   }
 
-  Future<void> _updateField(
+  Future<void> _updateIndividuoField(
       Individuo individuo, String field, String value) async {
     switch (field) {
       case 'nomeComum':
@@ -253,15 +253,38 @@ class _IndividuosSpreadsheetScreenState
         individuo.diametroCopa2 =
             double.tryParse(value.replaceAll(',', '.'));
         break;
-      case 'epifitas':
-        individuo.epifitas = value == 'Sim';
-        break;
     }
     await DatabaseHelper.instance.insertIndividuo(individuo);
-    setState(() {});
   }
 
-  Future<void> _updateFuste(
+  Future<void> _updateNumeroIndividuo(
+      Individuo individuo, String value) async {
+    final newNum = int.tryParse(value);
+    if (newNum == null || newNum < 1) return;
+
+    final existing = _individuos
+        .where((r) =>
+            r.individuo.numero == newNum &&
+            r.individuo.id != individuo.id)
+        .toList();
+    if (existing.isNotEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Número $newNum já existe!'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    individuo.numero = newNum;
+    await DatabaseHelper.instance.insertIndividuo(individuo);
+    _loadData();
+  }
+
+  Future<void> _updateFusteField(
       Fuste fuste, String field, String value) async {
     switch (field) {
       case 'altura':
@@ -272,6 +295,13 @@ class _IndividuosSpreadsheetScreenState
         break;
     }
     await DatabaseHelper.instance.insertFuste(fuste);
+  }
+
+  Future<void> _updateFusteEpifitas(
+      Fuste fuste, bool? value) async {
+    fuste.epifitas = value;
+    await DatabaseHelper.instance.insertFuste(fuste);
+    setState(() {});
   }
 
   Future<void> _updateFusteCount(
@@ -400,29 +430,29 @@ class _IndividuosSpreadsheetScreenState
       builder: (context, constraints) {
         final totalWidth = constraints.maxWidth;
 
-        // Define column flex weights
         final List<double> flexes = [];
 
         if (_showFustes) flexes.add(1.5); // Nº
         if (_showFustes) flexes.add(1.5); // Fuste
-        flexes.add(3);   // Nome Comum
-        flexes.add(3);   // Nome Científico
+        flexes.add(3); // Nome Comum
+        flexes.add(3); // Nome Científico
         flexes.add(2.5); // Família
         if (_isCenso) flexes.add(2); // Nº GPS
-        if (_isHerbaceo) flexes.add(2); // Nº Indiv / % Cobertura
+        if (_isHerbaceo) flexes.add(2);
         if (_isHerbaceo && widget.parcela.fisionomia == 'Campo Rupestre') {
-          flexes.add(2); // Nº Indiv Espécie
+          flexes.add(2);
         }
         if (_showFustes) flexes.add(2); // Altura
         if (_showFustes) flexes.add(2); // CAP
         if (_requiresDiametroCopa) flexes.add(2); // Copa 1
         if (_requiresDiametroCopa) flexes.add(2); // Copa 2
         if (_showFustes) flexes.add(2); // Epífitas
-        flexes.add(2);   // Data (last)
+        flexes.add(2); // Data
         flexes.add(1.2); // Ações
 
         final totalFlex = flexes.fold(0.0, (a, b) => a + b);
-        final colWidths = flexes.map((f) => (f / totalFlex) * totalWidth).toList();
+        final colWidths =
+            flexes.map((f) => (f / totalFlex) * totalWidth).toList();
 
         return Scrollbar(
           thumbVisibility: true,
@@ -441,7 +471,8 @@ class _IndividuosSpreadsheetScreenState
                     ..._displayRows
                         .asMap()
                         .entries
-                        .map((e) => _buildDataRow(e.key, e.value, colWidths)),
+                        .map((e) =>
+                            _buildDataRow(e.key, e.value, colWidths)),
                   ],
                 ),
               ),
@@ -508,7 +539,8 @@ class _IndividuosSpreadsheetScreenState
     );
   }
 
-  Widget _buildDataRow(int displayIndex, _DisplayRow row, List<double> w) {
+  Widget _buildDataRow(
+      int displayIndex, _DisplayRow row, List<double> w) {
     final ind = row.individuo;
     final fuste = row.fuste;
 
@@ -523,43 +555,40 @@ class _IndividuosSpreadsheetScreenState
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Nº (repete em todas as linhas)
           if (_showFustes)
-            _numberCell(ind.numero, w[i++]),
-          // Fuste
+            _numeroEditavelCell(ind, w[i++]),
           if (_showFustes)
             _fusteCountCell(ind, fuste, w[i++]),
-          // Nome Comum (repete em todas as linhas)
           _autocompleteCell(
             value: ind.nomeComum,
             options: DatabaseHelper.instance.getNomesComuns(),
             width: w[i++],
-            onChanged: (v) => _updateField(ind, 'nomeComum', v),
+            onChanged: (v) =>
+                _updateIndividuoField(ind, 'nomeComum', v),
           ),
-          // Nome Científico (repete em todas as linhas)
           _autocompleteCell(
             value: ind.nomeCientifico,
             options: DatabaseHelper.instance.getNomesCientificos(),
             width: w[i++],
             italic: true,
-            onChanged: (v) => _updateField(ind, 'nomeCientifico', v),
+            onChanged: (v) =>
+                _updateIndividuoField(ind, 'nomeCientifico', v),
           ),
-          // Família (repete em todas as linhas)
           _autocompleteCell(
             value: ind.familia,
             options: DatabaseHelper.instance.getFamilias(),
             width: w[i++],
-            onChanged: (v) => _updateField(ind, 'familia', v),
+            onChanged: (v) =>
+                _updateIndividuoField(ind, 'familia', v),
           ),
-          // Nº GPS (Censo)
           if (_isCenso)
             _editableCell(
               value: ind.numeroGps?.toString() ?? '',
               width: w[i++],
               inputType: TextInputType.number,
-              onChanged: (v) => _updateField(ind, 'numeroGps', v),
+              onChanged: (v) =>
+                  _updateIndividuoField(ind, 'numeroGps', v),
             ),
-          // Herbáceo fields
           if (_isHerbaceo)
             _editableCell(
               value: ind.numeroIndividuos?.toString() ?? '',
@@ -567,41 +596,45 @@ class _IndividuosSpreadsheetScreenState
               inputType:
                   const TextInputType.numberWithOptions(decimal: true),
               onChanged: (v) =>
-                  _updateField(ind, 'numeroIndividuos', v),
+                  _updateIndividuoField(ind, 'numeroIndividuos', v),
             ),
           if (_isHerbaceo && widget.parcela.fisionomia == 'Campo Rupestre')
             _editableCell(
               value: ind.numeroIndividuosEspecie?.toString() ?? '',
               width: w[i++],
               inputType: TextInputType.number,
-              onChanged: (v) =>
-                  _updateField(ind, 'numeroIndividuosEspecie', v),
+              onChanged: (v) => _updateIndividuoField(
+                  ind, 'numeroIndividuosEspecie', v),
             ),
-          // Altura & CAP (per fuste)
           if (_showFustes && fuste != null) ...[
             _editableCell(
               value: fuste.altura > 0
-                  ? fuste.altura.toStringAsFixed(2).replaceAll('.', ',')
+                  ? fuste.altura
+                      .toStringAsFixed(2)
+                      .replaceAll('.', ',')
                   : '',
               width: w[i++],
               inputType:
                   const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (v) => _updateFuste(fuste, 'altura', v),
+              onChanged: (v) =>
+                  _updateFusteField(fuste, 'altura', v),
             ),
             _editableCell(
               value: fuste.cap > 0
-                  ? fuste.cap.toStringAsFixed(2).replaceAll('.', ',')
+                  ? fuste.cap
+                      .toStringAsFixed(2)
+                      .replaceAll('.', ',')
                   : '',
               width: w[i++],
               inputType:
                   const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (v) => _updateFuste(fuste, 'cap', v),
+              onChanged: (v) =>
+                  _updateFusteField(fuste, 'cap', v),
             ),
           ] else if (_showFustes) ...[
             _emptyCell(w[i++]),
             _emptyCell(w[i++]),
           ],
-          // Diâmetro Copa
           if (_requiresDiametroCopa) ...[
             _editableCell(
               value: ind.diametroCopa1
@@ -612,7 +645,7 @@ class _IndividuosSpreadsheetScreenState
               inputType:
                   const TextInputType.numberWithOptions(decimal: true),
               onChanged: (v) =>
-                  _updateField(ind, 'diametroCopa1', v),
+                  _updateIndividuoField(ind, 'diametroCopa1', v),
             ),
             _editableCell(
               value: ind.diametroCopa2
@@ -623,36 +656,42 @@ class _IndividuosSpreadsheetScreenState
               inputType:
                   const TextInputType.numberWithOptions(decimal: true),
               onChanged: (v) =>
-                  _updateField(ind, 'diametroCopa2', v),
+                  _updateIndividuoField(ind, 'diametroCopa2', v),
             ),
           ],
-          // Epífitas
           if (_showFustes)
-            _epifitasCell(ind, w[i++]),
-          // Data (last column before actions)
+            _epifitasCell(fuste, w[i++]),
           _dateCell(ind, w[i++]),
-          // Actions
           _actionsCell(ind, displayIndex, w[i++]),
         ],
       ),
     );
   }
 
-  Widget _numberCell(int numero, double width) {
+  Widget _numeroEditavelCell(Individuo ind, double width) {
     return Container(
       width: width,
       height: 48,
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[300]!, width: 0.5),
       ),
-      child: Text(
-        '$numero',
+      child: TextFormField(
+        initialValue: '${ind.numero}',
+        decoration: InputDecoration(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          border: InputBorder.none,
+          isDense: true,
+        ),
         style: TextStyle(
           fontWeight: FontWeight.bold,
           color: Colors.green[800],
           fontSize: 13,
         ),
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        onFieldSubmitted: (value) =>
+            _updateNumeroIndividuo(ind, value),
       ),
     );
   }
@@ -749,8 +788,9 @@ class _IndividuosSpreadsheetScreenState
         onSelected: (selection) => onChanged(selection),
         fieldViewBuilder:
             (context, controller, focusNode, onSubmitted) {
+          controller.text = value;
           return TextFormField(
-            controller: controller..text = value,
+            controller: controller,
             focusNode: focusNode,
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.symmetric(
@@ -789,7 +829,7 @@ class _IndividuosSpreadsheetScreenState
     );
   }
 
-  Widget _epifitasCell(Individuo ind, double width) {
+  Widget _epifitasCell(Fuste? fuste, double width) {
     return Container(
       width: width,
       height: 48,
@@ -797,22 +837,20 @@ class _IndividuosSpreadsheetScreenState
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[300]!, width: 0.5),
       ),
-      child: DropdownButton<bool?>(
-        value: ind.epifitas,
-        isDense: true,
-        underline: const SizedBox(),
-        style:
-            const TextStyle(fontSize: 11, color: Colors.black87),
-        items: const [
-          DropdownMenuItem(value: null, child: Text('-')),
-          DropdownMenuItem(value: true, child: Text('Sim')),
-          DropdownMenuItem(value: false, child: Text('Não')),
-        ],
-        onChanged: (v) {
-          _updateField(ind, 'epifitas',
-              v == null ? '' : (v ? 'Sim' : 'Não'));
-        },
-      ),
+      child: fuste != null
+          ? DropdownButton<bool?>(
+              value: fuste.epifitas,
+              isDense: true,
+              underline: const SizedBox(),
+              style: const TextStyle(fontSize: 11, color: Colors.black87),
+              items: const [
+                DropdownMenuItem(value: null, child: Text('-')),
+                DropdownMenuItem(value: true, child: Text('Sim')),
+                DropdownMenuItem(value: false, child: Text('Não')),
+              ],
+              onChanged: (v) => _updateFusteEpifitas(fuste, v),
+            )
+          : const Text('-', style: TextStyle(fontSize: 11)),
     );
   }
 
@@ -837,8 +875,7 @@ class _IndividuosSpreadsheetScreenState
       ),
       child: PopupMenuButton<String>(
         padding: EdgeInsets.zero,
-        icon: Icon(Icons.more_vert,
-            size: 18, color: Colors.grey[600]),
+        icon: Icon(Icons.more_vert, size: 18, color: Colors.grey[600]),
         onSelected: (value) {
           if (value == 'editar') {
             Navigator.push(
@@ -869,8 +906,7 @@ class _IndividuosSpreadsheetScreenState
           const PopupMenuItem(
             value: 'excluir',
             child: ListTile(
-              leading:
-                  Icon(Icons.delete, color: Colors.red),
+              leading: Icon(Icons.delete, color: Colors.red),
               title: Text('Excluir',
                   style: TextStyle(color: Colors.red)),
               dense: true,

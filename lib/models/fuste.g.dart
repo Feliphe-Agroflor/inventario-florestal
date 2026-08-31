@@ -16,13 +16,15 @@ class FusteAdapter extends TypeAdapter<Fuste> {
       numeroFuste: fields[2] as int,
       altura: fields[3] as double,
       cap: fields[4] as double,
+      epifitas: fields[5] as bool?,
+      epifitasDetalhes: fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Fuste obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -32,7 +34,11 @@ class FusteAdapter extends TypeAdapter<Fuste> {
       ..writeByte(3)
       ..write(obj.altura)
       ..writeByte(4)
-      ..write(obj.cap);
+      ..write(obj.cap)
+      ..writeByte(5)
+      ..write(obj.epifitas)
+      ..writeByte(6)
+      ..write(obj.epifitasDetalhes);
   }
 
   @override
