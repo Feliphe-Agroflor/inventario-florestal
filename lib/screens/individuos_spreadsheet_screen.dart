@@ -496,7 +496,7 @@ class _IndividuosSpreadsheetScreenState
               options: [],
               keyboardType: TextInputType.number,
               readOnly: false,
-              onSubmitted: (v) {
+              onFieldChanged: (v) {
                 final n = int.tryParse(v);
                 if (n != null && n >= 1) {
                   _updateFusteCount(ind, n);
@@ -609,7 +609,7 @@ class _IndividuosSpreadsheetScreenState
             _emptyCell(w[i++]),
             _emptyCell(w[i++]),
           ],
-          if (_requiresDiametroCopa) ...[
+          if (_requiresDiametroCopa && row.isFirstFuste) ...[
             _cellWithSuggestions(
               value: ind.diametroCopa1
                       ?.toStringAsFixed(2)
@@ -642,6 +642,9 @@ class _IndividuosSpreadsheetScreenState
                 _saveIndividuo(ind);
               },
             ),
+          ] else if (_requiresDiametroCopa) ...[
+            _emptyCell(w[i++]),
+            _emptyCell(w[i++]),
           ],
           if (_showFustes) _epifitasCell(fuste, w[i++]),
           _dateCell(ind, w[i++]),
