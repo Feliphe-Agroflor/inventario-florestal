@@ -561,12 +561,9 @@ class _IndividuosSpreadsheetScreenState
             onFieldChanged: (v) {
               ind.nomeComum = v;
             },
-            onSubmitted: (v) async {
+            onSubmitted: (v) {
               ind.nomeComum = v;
-              await _saveIndividuo(ind);
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) _rebuildDisplayRows();
-              });
+              _saveIndividuo(ind);
             },
           ),
           _cellWithSuggestions(
@@ -580,12 +577,9 @@ class _IndividuosSpreadsheetScreenState
             onFieldChanged: (v) {
               ind.nomeCientifico = v;
             },
-            onSubmitted: (v) async {
+            onSubmitted: (v) {
               ind.nomeCientifico = v;
-              await _saveIndividuo(ind);
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) _rebuildDisplayRows();
-              });
+              _saveIndividuo(ind);
             },
           ),
           _cellWithSuggestions(
@@ -987,14 +981,17 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
 
   void _onFocusChange() {
     if (!_focusNode.hasFocus) {
+      if (_selectingSuggestion) {
+        _selectingSuggestion = false;
+        return;
+      }
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !_selectingSuggestion) {
+        if (mounted) {
           if (_controller.text != widget.initialValue) {
             widget.onSubmitted?.call(_controller.text);
           }
           _removeOverlay();
         }
-        _selectingSuggestion = false;
       });
     }
   }
@@ -1042,8 +1039,10 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
                       );
                       widget.onFieldChanged?.call(selected);
                       WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _selectingSuggestion = false;
-                        _focusNode.unfocus();
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _selectingSuggestion = false;
+                          _focusNode.unfocus();
+                        });
                       });
                     },
                     child: Padding(
