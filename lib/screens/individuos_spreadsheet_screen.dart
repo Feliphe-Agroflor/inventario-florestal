@@ -947,10 +947,12 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.initialValue);
+    _controller.addListener(_onTextChanged);
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_onTextChanged);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -966,6 +968,25 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
       _controller.text = widget.initialValue;
       if (hasFocus && sel.isValid) {
         _controller.selection = sel;
+      }
+    }
+  }
+
+  void _onTextChanged() {
+    final value = _controller.text;
+    widget.onFieldChanged?.call(value);
+    if (widget.options.isNotEmpty && !_menuOpen) {
+      if (value.isEmpty) {
+        _filteredOptions = widget.options;
+      } else {
+        _filteredOptions = widget.options
+            .where((o) => o.toLowerCase().contains(value.toLowerCase()))
+            .toList();
+      }
+      if (_filteredOptions.isNotEmpty && _focusNode.hasFocus) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _openMenu();
+        });
       }
     }
   }
@@ -1001,17 +1022,6 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
     });
   }
 
-  void _filterOptions(String value) {
-    if (widget.options.isEmpty) return;
-    if (value.isEmpty) {
-      _filteredOptions = widget.options;
-    } else {
-      _filteredOptions = widget.options
-          .where((o) => o.toLowerCase().contains(value.toLowerCase()))
-          .toList();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1045,19 +1055,6 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
             : widget.keyboardType == TextInputType.number
                 ? [FilteringTextInputFormatter.digitsOnly]
                 : null,
-        onChanged: (value) {
-          widget.onFieldChanged?.call(value);
-          if (widget.options.isNotEmpty) {
-            _filterOptions(value);
-            if (_filteredOptions.isNotEmpty && _focusNode.hasFocus) {
-              if (!_menuOpen) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _openMenu();
-                });
-              }
-            }
-          }
-        },
         onFieldSubmitted: widget.onSubmitted,
       ),
     );
