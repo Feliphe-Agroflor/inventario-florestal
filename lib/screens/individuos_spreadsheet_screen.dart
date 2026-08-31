@@ -15,6 +15,18 @@ class _IndividuoRow {
   _IndividuoRow({required this.individuo, required this.fustes});
 }
 
+class _DisplayRow {
+  final Individuo individuo;
+  final Fuste? fuste;
+  final bool isFirstFuste;
+
+  _DisplayRow({
+    required this.individuo,
+    this.fuste,
+    required this.isFirstFuste,
+  });
+}
+
 class IndividuosSpreadsheetScreen extends StatefulWidget {
   final Parcela parcela;
   final String estrato;
@@ -35,19 +47,24 @@ class IndividuosSpreadsheetScreen extends StatefulWidget {
 class _IndividuosSpreadsheetScreenState
     extends State<IndividuosSpreadsheetScreen>
     with SingleTickerProviderStateMixin {
-  List<_IndividuoRow> _rows = [];
+  List<_IndividuoRow> _individuos = [];
+  List<_DisplayRow> _displayRows = [];
   late TabController _tabController;
   final ScrollController _horizontalScroll = ScrollController();
 
   bool get _isHerbaceo => widget.estrato == 'Herbáceo';
   bool get _isFloristica => widget.estrato == 'Florística';
-  bool get _isCenso => widget.parcela.metodo == 'Censo' && widget.estrato == 'Censo';
+  bool get _isCenso =>
+      widget.parcela.metodo == 'Censo' && widget.estrato == 'Censo';
   bool get _hasSubParcelas =>
       widget.subParcelaFiltro == null &&
       ((_isHerbaceo && widget.parcela.fisionomia == 'Campo Rupestre') ||
-      (widget.parcela.metodo == 'Censo' && (widget.estrato == 'Arbustivo' || widget.estrato == 'Herbáceo')));
+          (widget.parcela.metodo == 'Censo' &&
+              (widget.estrato == 'Arbustivo' ||
+                  widget.estrato == 'Herbáceo')));
   bool get _requiresDiametroCopa =>
-      (widget.parcela.fisionomia == 'Cerrado' && widget.estrato == 'Arbóreo') ||
+      (widget.parcela.fisionomia == 'Cerrado' &&
+          widget.estrato == 'Arbóreo') ||
       (widget.parcela.fisionomia == 'Campo Rupestre' &&
           (widget.estrato == 'Arbóreo' || widget.estrato == 'Arbustivo')) ||
       (_isCenso &&
@@ -57,19 +74,11 @@ class _IndividuosSpreadsheetScreenState
               widget.parcela.fisionomia == 'Árvores isoladas'));
   bool get _showFustes => !_isHerbaceo && !_isFloristica;
 
-  int get _maxFustes {
-    int max = 1;
-    for (final row in _rows) {
-      if (row.fustes.length > max) max = row.fustes.length;
-    }
-    return max;
-  }
-
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(
-        length: _hasSubParcelas ? 4 : 1, vsync: this);
+    _tabController =
+        TabController(length: _hasSubParcelas ? 4 : 1, vsync: this);
     _tabController.addListener(_onTabChanged);
     _loadData();
   }
@@ -110,7 +119,8 @@ class _IndividuosSpreadsheetScreenState
     } else {
       final all =
           DatabaseHelper.instance.getIndividuosByParcela(widget.parcela.id);
-      individuos = all.where((i) => i.estrato == widget.estrato).toList();
+      individuos =
+          all.where((i) => i.estrato == widget.estrato).toList();
     }
 
     List<_IndividuoRow> lista = [];
@@ -120,7 +130,30 @@ class _IndividuosSpreadsheetScreenState
       lista.add(_IndividuoRow(individuo: ind, fustes: fustes));
     }
 
-    setState(() => _rows = lista);
+    // Build flat display rows
+    List<_DisplayRow> rows = [];
+    for (var row in lista) {
+      if (_showFustes && row.fustes.isNotEmpty) {
+        for (int f = 0; f < row.fustes.length; f++) {
+          rows.add(_DisplayRow(
+            individuo: row.individuo,
+            fuste: row.fustes[f],
+            isFirstFuste: f == 0,
+          ));
+        }
+      } else {
+        rows.add(_DisplayRow(
+          individuo: row.individuo,
+          fuste: null,
+          isFirstFuste: true,
+        ));
+      }
+    }
+
+    setState(() {
+      _individuos = lista;
+      _displayRows = rows;
+    });
   }
 
   Future<void> _addNewIndividuo() async {
@@ -162,13 +195,13 @@ class _IndividuosSpreadsheetScreenState
     });
   }
 
-  Future<void> _deleteIndividuo(_IndividuoRow row) async {
+  Future<void> _deleteIndividuo(Individuo individuo) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirmar exclusão'),
         content: Text(
-            'Deseja excluir o indivíduo Nº ${row.individuo.numero} - ${row.individuo.nomeComum.isNotEmpty ? row.individuo.nomeComum : "Sem nome"}?'),
+            'Deseja excluir o indivíduo Nº ${individuo.numero} - ${individuo.nomeComum.isNotEmpty ? individuo.nomeComum : "Sem nome"}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -184,7 +217,7 @@ class _IndividuosSpreadsheetScreenState
     );
 
     if (confirm == true) {
-      await DatabaseHelper.instance.deleteIndividuo(row.individuo.id);
+      await DatabaseHelper.instance.deleteIndividuo(individuo.id);
       _loadData();
     }
   }
@@ -241,29 +274,46 @@ class _IndividuosSpreadsheetScreenState
     await DatabaseHelper.instance.insertFuste(fuste);
   }
 
-  Future<void> _addFusteToIndividuo(_IndividuoRow row) async {
-    final nextNum = row.fustes.length + 1;
-    await DatabaseHelper.instance.insertFuste(Fuste(
-      id: const Uuid().v4(),
-      individuoId: row.individuo.id,
-      numeroFuste: nextNum,
-      altura: 0,
-      cap: 0,
-    ));
+  Future<void> _updateFusteCount(
+      Individuo individuo, int newCount) async {
+    if (newCount < 1) return;
+
+    final currentFustes =
+        DatabaseHelper.instance.getFustesByIndividuo(individuo.id);
+    final currentCount = currentFustes.length;
+
+    if (newCount > currentCount) {
+      // Add fustes
+      for (int i = currentCount; i < newCount; i++) {
+        await DatabaseHelper.instance.insertFuste(Fuste(
+          id: const Uuid().v4(),
+          individuoId: individuo.id,
+          numeroFuste: i + 1,
+          altura: 0,
+          cap: 0,
+        ));
+      }
+    } else if (newCount < currentCount) {
+      // Remove extra fustes (remove from end)
+      for (int i = currentCount - 1; i >= newCount; i--) {
+        await DatabaseHelper.instance.deleteFuste(currentFustes[i].id);
+      }
+    }
+
     _loadData();
   }
 
-  Future<void> _selectDate(_IndividuoRow row) async {
+  Future<void> _selectDate(Individuo individuo) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: row.individuo.dataColeta,
+      initialDate: individuo.dataColeta,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
       locale: const Locale('pt', 'BR'),
     );
     if (picked != null) {
-      row.individuo.dataColeta = picked;
-      await DatabaseHelper.instance.insertIndividuo(row.individuo);
+      individuo.dataColeta = picked;
+      await DatabaseHelper.instance.insertIndividuo(individuo);
       _loadData();
     }
   }
@@ -311,23 +361,26 @@ class _IndividuosSpreadsheetScreenState
               )
             : null,
       ),
-      body: _rows.isEmpty
+      body: _individuos.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.table_chart, size: 80, color: Colors.green[200]),
+                  Icon(Icons.table_chart,
+                      size: 80, color: Colors.green[200]),
                   const SizedBox(height: 16),
                   Text(
                     _isFloristica
                         ? 'Nenhuma espécie cadastrada'
                         : 'Nenhum indivíduo cadastrado',
-                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                    style:
+                        TextStyle(fontSize: 18, color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Toque no botão + para adicionar',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+                    style:
+                        TextStyle(fontSize: 14, color: Colors.grey[400]),
                   ),
                 ],
               ),
@@ -338,7 +391,8 @@ class _IndividuosSpreadsheetScreenState
         backgroundColor: Colors.green[800],
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
-        label: Text(_isFloristica ? 'Nova Espécie' : 'Novo Indivíduo'),
+        label:
+            Text(_isFloristica ? 'Nova Espécie' : 'Novo Indivíduo'),
       ),
     );
   }
@@ -356,7 +410,10 @@ class _IndividuosSpreadsheetScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeaderRow(),
-              ...List.generate(_rows.length, (index) => _buildDataRow(index)),
+              ..._displayRows
+                  .asMap()
+                  .entries
+                  .map((e) => _buildDataRow(e.key, e.value)),
             ],
           ),
         ),
@@ -371,6 +428,7 @@ class _IndividuosSpreadsheetScreenState
         mainAxisSize: MainAxisSize.min,
         children: [
           _headerCell('Nº', 50),
+          if (_showFustes) _headerCell('Fuste', 60),
           _headerCell('Nome Comum', 140),
           _headerCell('Nome Científico', 160),
           _headerCell('Família', 120),
@@ -385,22 +443,16 @@ class _IndividuosSpreadsheetScreenState
             if (widget.parcela.fisionomia == 'Campo Rupestre')
               _headerCell('Nº Indiv. Esp.', 100),
           ],
-          if (_showFustes) ...List.generate(_maxFustes * 2, (i) {
-            final fusteNum = i ~/ 2 + 1;
-            final isAltura = i % 2 == 0;
-            return _headerCell(
-              'F$fusteNum ${isAltura ? 'Alt(m)' : 'CAP(cm)'}',
-              90,
-            );
-          }),
-          if (_showFustes && _maxFustes > 1)
-            _headerCell('+', 40),
+          if (_showFustes) ...[
+            _headerCell('Altura (m)', 90),
+            _headerCell('CAP (cm)', 90),
+          ],
           if (_requiresDiametroCopa) ...[
-            _headerCell('Copa 1(m)', 90),
-            _headerCell('Copa 2(m)', 90),
+            _headerCell('Copa 1 (m)', 90),
+            _headerCell('Copa 2 (m)', 90),
           ],
           if (_showFustes) _headerCell('Epífitas', 80),
-          _headerCell('', 50), // Actions column
+          _headerCell('', 50),
         ],
       ),
     );
@@ -429,125 +481,172 @@ class _IndividuosSpreadsheetScreenState
     );
   }
 
-  Widget _buildDataRow(int index) {
-    final row = _rows[index];
+  Widget _buildDataRow(int displayIndex, _DisplayRow row) {
     final ind = row.individuo;
+    final fuste = row.fuste;
+    final isFirst = row.isFirstFuste;
+
+    // Alternate background per individual, not per row
+    final indIndex = _individuos.indexOf(
+        _individuos.firstWhere((r) => r.individuo.id == ind.id));
+    final bgColor = indIndex.isEven ? Colors.white : Colors.grey[50];
 
     return Container(
-      color: index.isEven ? Colors.white : Colors.grey[50],
+      color: bgColor,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Nº
-          _numberCell(ind.numero, 50),
-          // Nome Comum
-          _autocompleteCell(
-            value: ind.nomeComum,
-            options: DatabaseHelper.instance.getNomesComuns(),
-            width: 140,
-            onChanged: (v) => _updateField(ind, 'nomeComum', v),
-          ),
-          // Nome Científico
-          _autocompleteCell(
-            value: ind.nomeCientifico,
-            options: DatabaseHelper.instance.getNomesCientificos(),
-            width: 160,
-            italic: true,
-            onChanged: (v) => _updateField(ind, 'nomeCientifico', v),
-          ),
-          // Família
-          _autocompleteCell(
-            value: ind.familia,
-            options: DatabaseHelper.instance.getFamilias(),
-            width: 120,
-            onChanged: (v) => _updateField(ind, 'familia', v),
-          ),
-          // Data
-          _dateCell(row, 100),
+          // Nº (only show on first fuste row, span visually)
+          _numberCell(ind.numero, 50, show: isFirst),
+          // Fuste
+          if (_showFustes)
+            _fusteCountCell(ind, fuste, 60),
+          // Nome Comum (only first fuste)
+          if (isFirst)
+            _autocompleteCell(
+              value: ind.nomeComum,
+              options: DatabaseHelper.instance.getNomesComuns(),
+              width: 140,
+              onChanged: (v) => _updateField(ind, 'nomeComum', v),
+            )
+          else
+            _emptyCell(140),
+          // Nome Científico (only first fuste)
+          if (isFirst)
+            _autocompleteCell(
+              value: ind.nomeCientifico,
+              options: DatabaseHelper.instance.getNomesCientificos(),
+              width: 160,
+              italic: true,
+              onChanged: (v) =>
+                  _updateField(ind, 'nomeCientifico', v),
+            )
+          else
+            _emptyCell(160),
+          // Família (only first fuste)
+          if (isFirst)
+            _autocompleteCell(
+              value: ind.familia,
+              options: DatabaseHelper.instance.getFamilias(),
+              width: 120,
+              onChanged: (v) => _updateField(ind, 'familia', v),
+            )
+          else
+            _emptyCell(120),
+          // Data (only first fuste)
+          if (isFirst)
+            _dateCell(ind, 100)
+          else
+            _emptyCell(100),
           // Nº GPS (Censo)
           if (_isCenso)
-            _editableCell(
-              value: ind.numeroGps?.toString() ?? '',
-              width: 80,
-              inputType: TextInputType.number,
-              onChanged: (v) => _updateField(ind, 'numeroGps', v),
-            ),
+            isFirst
+                ? _editableCell(
+                    value: ind.numeroGps?.toString() ?? '',
+                    width: 80,
+                    inputType: TextInputType.number,
+                    onChanged: (v) =>
+                        _updateField(ind, 'numeroGps', v),
+                  )
+                : _emptyCell(80),
           // Herbáceo fields
           if (_isHerbaceo) ...[
-            _editableCell(
-              value: ind.numeroIndividuos?.toString() ?? '',
-              width: 100,
-              inputType: const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (v) => _updateField(ind, 'numeroIndividuos', v),
-            ),
+            isFirst
+                ? _editableCell(
+                    value:
+                        ind.numeroIndividuos?.toString() ?? '',
+                    width: 100,
+                    inputType: const TextInputType.numberWithOptions(
+                        decimal: true),
+                    onChanged: (v) => _updateField(
+                        ind, 'numeroIndividuos', v),
+                  )
+                : _emptyCell(100),
             if (widget.parcela.fisionomia == 'Campo Rupestre')
-              _editableCell(
-                value: ind.numeroIndividuosEspecie?.toString() ?? '',
-                width: 100,
-                inputType: TextInputType.number,
-                onChanged: (v) =>
-                    _updateField(ind, 'numeroIndividuosEspecie', v),
-              ),
+              isFirst
+                  ? _editableCell(
+                      value: ind.numeroIndividuosEspecie
+                              ?.toString() ??
+                          '',
+                      width: 100,
+                      inputType: TextInputType.number,
+                      onChanged: (v) => _updateField(
+                          ind, 'numeroIndividuosEspecie', v),
+                    )
+                  : _emptyCell(100),
           ],
-          // Fustes
-          if (_showFustes) ..._buildFusteCells(row, index),
-          if (_showFustes && _maxFustes > 1)
-            _addFusteButtonCell(row, 40),
-          // Diâmetro Copa
+          // Altura & CAP (per fuste)
+          if (_showFustes && fuste != null) ...[
+            _editableCell(
+              value: fuste.altura > 0
+                  ? fuste.altura
+                      .toStringAsFixed(2)
+                      .replaceAll('.', ',')
+                  : '',
+              width: 90,
+              inputType: const TextInputType.numberWithOptions(
+                  decimal: true),
+              onChanged: (v) => _updateFuste(fuste, 'altura', v),
+            ),
+            _editableCell(
+              value: fuste.cap > 0
+                  ? fuste.cap
+                      .toStringAsFixed(2)
+                      .replaceAll('.', ',')
+                  : '',
+              width: 90,
+              inputType: const TextInputType.numberWithOptions(
+                  decimal: true),
+              onChanged: (v) => _updateFuste(fuste, 'cap', v),
+            ),
+          ] else if (_showFustes) ...[
+            _emptyCell(90),
+            _emptyCell(90),
+          ],
+          // Diâmetro Copa (only first fuste)
           if (_requiresDiametroCopa) ...[
-            _editableCell(
-              value: ind.diametroCopa1?.toStringAsFixed(2).replaceAll('.', ',') ?? '',
-              width: 90,
-              inputType: const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (v) => _updateField(ind, 'diametroCopa1', v),
-            ),
-            _editableCell(
-              value: ind.diametroCopa2?.toStringAsFixed(2).replaceAll('.', ',') ?? '',
-              width: 90,
-              inputType: const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (v) => _updateField(ind, 'diametroCopa2', v),
-            ),
+            isFirst
+                ? _editableCell(
+                    value: ind.diametroCopa1
+                            ?.toStringAsFixed(2)
+                            .replaceAll('.', ',') ??
+                        '',
+                    width: 90,
+                    inputType: const TextInputType.numberWithOptions(
+                        decimal: true),
+                    onChanged: (v) =>
+                        _updateField(ind, 'diametroCopa1', v),
+                  )
+                : _emptyCell(90),
+            isFirst
+                ? _editableCell(
+                    value: ind.diametroCopa2
+                            ?.toStringAsFixed(2)
+                            .replaceAll('.', ',') ??
+                        '',
+                    width: 90,
+                    inputType: const TextInputType.numberWithOptions(
+                        decimal: true),
+                    onChanged: (v) =>
+                        _updateField(ind, 'diametroCopa2', v),
+                  )
+                : _emptyCell(90),
           ],
-          // Epífitas
+          // Epífitas (only first fuste)
           if (_showFustes)
-            _epifitasCell(ind, 80),
-          // Actions
-          _actionsCell(row, index, 50),
+            isFirst
+                ? _epifitasCell(ind, 80)
+                : _emptyCell(80),
+          // Actions (only first fuste)
+          isFirst
+              ? _actionsCell(ind, displayIndex, 50)
+              : _emptyCell(50),
         ],
       ),
     );
   }
 
-  List<Widget> _buildFusteCells(_IndividuoRow row, int rowIndex) {
-    List<Widget> cells = [];
-    for (int f = 0; f < _maxFustes; f++) {
-      if (f < row.fustes.length) {
-        final fuste = row.fustes[f];
-        cells.add(_editableCell(
-          value: fuste.altura > 0
-              ? fuste.altura.toStringAsFixed(2).replaceAll('.', ',')
-              : '',
-          width: 90,
-          inputType: const TextInputType.numberWithOptions(decimal: true),
-          onChanged: (v) => _updateFuste(fuste, 'altura', v),
-        ));
-        cells.add(_editableCell(
-          value: fuste.cap > 0
-              ? fuste.cap.toStringAsFixed(2).replaceAll('.', ',')
-              : '',
-          width: 90,
-          inputType: const TextInputType.numberWithOptions(decimal: true),
-          onChanged: (v) => _updateFuste(fuste, 'cap', v),
-        ));
-      } else {
-        cells.add(_emptyCell(90));
-        cells.add(_emptyCell(90));
-      }
-    }
-    return cells;
-  }
-
-  Widget _numberCell(int numero, double width) {
+  Widget _numberCell(int numero, double width, {bool show = true}) {
     return Container(
       width: width,
       height: 48,
@@ -555,13 +654,46 @@ class _IndividuosSpreadsheetScreenState
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[300]!, width: 0.5),
       ),
-      child: Text(
-        '$numero',
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: Colors.green[800],
-          fontSize: 13,
+      child: show
+          ? Text(
+              '$numero',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.green[800],
+                fontSize: 13,
+              ),
+            )
+          : null,
+    );
+  }
+
+  Widget _fusteCountCell(
+      Individuo ind, Fuste? currentFuste, double width) {
+    return Container(
+      width: width,
+      height: 48,
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[300]!, width: 0.5),
+      ),
+      child: TextFormField(
+        initialValue: currentFuste != null
+            ? '${currentFuste.numeroFuste}'
+            : '1',
+        decoration: InputDecoration(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          border: InputBorder.none,
+          isDense: true,
         ),
+        style: const TextStyle(fontSize: 12),
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        onChanged: (value) {
+          final newCount = int.tryParse(value);
+          if (newCount != null && newCount >= 1) {
+            _updateFusteCount(ind, newCount);
+          }
+        },
       ),
     );
   }
@@ -582,14 +714,19 @@ class _IndividuosSpreadsheetScreenState
       child: TextFormField(
         controller: controller,
         decoration: InputDecoration(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
           border: InputBorder.none,
           isDense: true,
         ),
         style: const TextStyle(fontSize: 12),
         keyboardType: inputType,
-        inputFormatters: inputType == const TextInputType.numberWithOptions(decimal: true)
-            ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*[,\.]?\d{0,2}'))]
+        inputFormatters: inputType ==
+                const TextInputType.numberWithOptions(decimal: true)
+            ? [
+                FilteringTextInputFormatter.allow(
+                    RegExp(r'^\d*[,\.]?\d{0,2}'))
+              ]
             : inputType == TextInputType.number
                 ? [FilteringTextInputFormatter.digitsOnly]
                 : null,
@@ -626,14 +763,15 @@ class _IndividuosSpreadsheetScreenState
             controller: controller..text = value,
             focusNode: focusNode,
             decoration: InputDecoration(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 6, vertical: 8),
               border: InputBorder.none,
               isDense: true,
             ),
             style: TextStyle(
               fontSize: 12,
-              fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+              fontStyle:
+                  italic ? FontStyle.italic : FontStyle.normal,
             ),
             onChanged: onChanged,
           );
@@ -642,9 +780,9 @@ class _IndividuosSpreadsheetScreenState
     );
   }
 
-  Widget _dateCell(_IndividuoRow row, double width) {
+  Widget _dateCell(Individuo ind, double width) {
     return GestureDetector(
-      onTap: () => _selectDate(row),
+      onTap: () => _selectDate(ind),
       child: Container(
         width: width,
         height: 48,
@@ -653,7 +791,7 @@ class _IndividuosSpreadsheetScreenState
           border: Border.all(color: Colors.grey[300]!, width: 0.5),
         ),
         child: Text(
-          DateFormat('dd/MM/yy').format(row.individuo.dataColeta),
+          DateFormat('dd/MM/yy').format(ind.dataColeta),
           style: const TextStyle(fontSize: 11),
           textAlign: TextAlign.center,
         ),
@@ -673,28 +811,15 @@ class _IndividuosSpreadsheetScreenState
         value: ind.epifitas,
         isDense: true,
         underline: const SizedBox(),
-        style: const TextStyle(fontSize: 11, color: Colors.black87),
+        style:
+            const TextStyle(fontSize: 11, color: Colors.black87),
         items: const [
           DropdownMenuItem(value: null, child: Text('-')),
           DropdownMenuItem(value: true, child: Text('Sim')),
           DropdownMenuItem(value: false, child: Text('Não')),
         ],
-        onChanged: (v) => _updateField(ind, 'epifitas', v == null ? '' : (v ? 'Sim' : 'Não')),
-      ),
-    );
-  }
-
-  Widget _addFusteButtonCell(_IndividuoRow row, double width) {
-    return Container(
-      width: width,
-      height: 48,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!, width: 0.5),
-      ),
-      child: InkWell(
-        onTap: () => _addFusteToIndividuo(row),
-        child: Icon(Icons.add_circle_outline, size: 18, color: Colors.green[700]),
+        onChanged: (v) => _updateField(ind, 'epifitas',
+            v == null ? '' : (v ? 'Sim' : 'Não')),
       ),
     );
   }
@@ -710,7 +835,7 @@ class _IndividuosSpreadsheetScreenState
     );
   }
 
-  Widget _actionsCell(_IndividuoRow row, int index, double width) {
+  Widget _actionsCell(Individuo ind, int displayIndex, double width) {
     return Container(
       width: width,
       height: 48,
@@ -720,7 +845,8 @@ class _IndividuosSpreadsheetScreenState
       ),
       child: PopupMenuButton<String>(
         padding: EdgeInsets.zero,
-        icon: Icon(Icons.more_vert, size: 18, color: Colors.grey[600]),
+        icon: Icon(Icons.more_vert,
+            size: 18, color: Colors.grey[600]),
         onSelected: (value) {
           if (value == 'editar') {
             Navigator.push(
@@ -729,13 +855,14 @@ class _IndividuosSpreadsheetScreenState
                 builder: (context) => IndividuoFormScreen(
                   parcela: widget.parcela,
                   estrato: widget.estrato,
-                  individuo: row.individuo,
-                  subParcela: _hasSubParcelas ? _currentSubParcela : 1,
+                  individuo: ind,
+                  subParcela:
+                      _hasSubParcelas ? _currentSubParcela : 1,
                 ),
               ),
             ).then((_) => _loadData());
           } else if (value == 'excluir') {
-            _deleteIndividuo(row);
+            _deleteIndividuo(ind);
           }
         },
         itemBuilder: (context) => [
@@ -750,8 +877,10 @@ class _IndividuosSpreadsheetScreenState
           const PopupMenuItem(
             value: 'excluir',
             child: ListTile(
-              leading: Icon(Icons.delete, color: Colors.red),
-              title: Text('Excluir', style: TextStyle(color: Colors.red)),
+              leading:
+                  Icon(Icons.delete, color: Colors.red),
+              title: Text('Excluir',
+                  style: TextStyle(color: Colors.red)),
               dense: true,
             ),
           ),
