@@ -561,10 +561,12 @@ class _IndividuosSpreadsheetScreenState
             onFieldChanged: (v) {
               ind.nomeComum = v;
             },
-            onSubmitted: (v) {
+            onSubmitted: (v) async {
               ind.nomeComum = v;
-              _saveIndividuo(ind);
-              _rebuildDisplayRows();
+              await _saveIndividuo(ind);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _rebuildDisplayRows();
+              });
             },
           ),
           _cellWithSuggestions(
@@ -578,10 +580,12 @@ class _IndividuosSpreadsheetScreenState
             onFieldChanged: (v) {
               ind.nomeCientifico = v;
             },
-            onSubmitted: (v) {
+            onSubmitted: (v) async {
               ind.nomeCientifico = v;
-              _saveIndividuo(ind);
-              _rebuildDisplayRows();
+              await _saveIndividuo(ind);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _rebuildDisplayRows();
+              });
             },
           ),
           _cellWithSuggestions(
@@ -949,6 +953,7 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
   List<String> _filteredOptions = [];
   OverlayEntry? _overlayEntry;
   final LayerLink _layerLink = LayerLink();
+  bool _selectingSuggestion = false;
 
   @override
   void initState() {
@@ -970,7 +975,8 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
   void didUpdateWidget(covariant _AutocompleteCell oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialValue != widget.initialValue &&
-        _controller.text != widget.initialValue) {
+        _controller.text != widget.initialValue &&
+        !_selectingSuggestion) {
       final sel = _controller.selection;
       _controller.text = widget.initialValue;
       if (sel.isValid) {
@@ -981,10 +987,15 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
 
   void _onFocusChange() {
     if (!_focusNode.hasFocus) {
-      if (_controller.text != widget.initialValue) {
-        widget.onSubmitted?.call(_controller.text);
-      }
-      _removeOverlay();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_selectingSuggestion && mounted) {
+          if (_controller.text != widget.initialValue) {
+            widget.onSubmitted?.call(_controller.text);
+          }
+          _removeOverlay();
+        }
+        _selectingSuggestion = false;
+      });
     }
   }
 
@@ -995,10 +1006,10 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
 
   void _showOverlay() {
     _removeOverlay();
-    if (_filteredOptions.isEmpty) return;
+    if (_filteredOptions.isEmpty || !_focusNode.hasFocus) return;
 
     _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
+      builder: (overlayContext) => Positioned(
         width: widget.width,
         child: CompositedTransformFollower(
           link: _layerLink,
@@ -1021,15 +1032,16 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
                 itemBuilder: (context, index) {
                   return InkWell(
                     onTap: () {
-                      _controller.text = _filteredOptions[index];
+                      _selectingSuggestion = true;
+                      final selected = _filteredOptions[index];
+                      _controller.text = selected;
                       _controller.selection = TextSelection.fromPosition(
-                        TextPosition(
-                            offset: _filteredOptions[index].length),
+                        TextPosition(offset: selected.length),
                       );
-                      widget.onFieldChanged
-                          ?.call(_filteredOptions[index]);
                       _removeOverlay();
+                      widget.onFieldChanged?.call(selected);
                       WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _selectingSuggestion = false;
                         _focusNode.unfocus();
                       });
                     },
@@ -1088,6 +1100,7 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
                   ? [FilteringTextInputFormatter.digitsOnly]
                   : null,
           onChanged: (value) {
+            if (_selectingSuggestion) return;
             widget.onFieldChanged?.call(value);
             if (widget.options.isNotEmpty) {
               if (value.isEmpty) {
