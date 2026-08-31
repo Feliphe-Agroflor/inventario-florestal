@@ -253,14 +253,7 @@ class _IndividuosSpreadsheetScreenState
       for (int i = currentCount - 1; i >= newCount; i--) {
         await DatabaseHelper.instance.deleteFuste(currentFustes[i].id);
       }
-    }
-
-    if (currentFustes.isNotEmpty) {
-      currentFustes[0].numeroFuste = newCount;
-      await DatabaseHelper.instance.insertFuste(currentFustes[0]);
-    }
-
-    if (newCount > currentCount) {
+    } else if (newCount > currentCount) {
       for (int i = currentCount; i < newCount; i++) {
         await DatabaseHelper.instance.insertFuste(Fuste(
           id: const Uuid().v4(),
@@ -274,11 +267,20 @@ class _IndividuosSpreadsheetScreenState
 
     final updatedFustes =
         DatabaseHelper.instance.getFustesByIndividuo(individuo.id);
+    for (int i = 0; i < updatedFustes.length; i++) {
+      if (updatedFustes[i].numeroFuste != i + 1) {
+        updatedFustes[i].numeroFuste = i + 1;
+        await DatabaseHelper.instance.insertFuste(updatedFustes[i]);
+      }
+    }
+
+    final finalFustes =
+        DatabaseHelper.instance.getFustesByIndividuo(individuo.id);
     final idx = _individuos.indexWhere((r) => r.individuo.id == individuo.id);
     if (idx != -1) {
       _individuos[idx] = _IndividuoRow(
         individuo: individuo,
-        fustes: updatedFustes,
+        fustes: finalFustes,
       );
     }
     _rebuildDisplayRows();
