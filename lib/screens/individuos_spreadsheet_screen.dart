@@ -695,10 +695,9 @@ class _IndividuosSpreadsheetScreenState
                 DropdownMenuItem(value: true, child: Text('Sim')),
                 DropdownMenuItem(value: false, child: Text('Não')),
               ],
-              onChanged: (v) async {
+              onChanged: (v) {
                 fuste.epifitas = v;
-                await _saveFuste(fuste);
-                setState(() {});
+                _saveFuste(fuste);
               },
             )
           : const Text('-', style: TextStyle(fontSize: 11)),
@@ -854,6 +853,9 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
 
   void _onFocusChange() {
     if (!_focusNode.hasFocus) {
+      if (_controller.text != widget.initialValue) {
+        widget.onSubmitted?.call(_controller.text);
+      }
       _removeOverlay();
     }
   }
