@@ -217,6 +217,22 @@ class _IndividuosSpreadsheetScreenState
     await DatabaseHelper.instance.insertFuste(fuste);
   }
 
+  Future<void> _addFusteToLastIndividuo() async {
+    if (_individuos.isEmpty) return;
+    final lastRow = _individuos.last;
+    final currentFustes =
+        DatabaseHelper.instance.getFustesByIndividuo(lastRow.individuo.id);
+    final nextNum = currentFustes.length + 1;
+    await DatabaseHelper.instance.insertFuste(Fuste(
+      id: const Uuid().v4(),
+      individuoId: lastRow.individuo.id,
+      numeroFuste: nextNum,
+      altura: 0,
+      cap: 0,
+    ));
+    _loadData();
+  }
+
   Future<void> _updateNumeroIndividuo(
       Individuo individuo, String value) async {
     final newNum = int.tryParse(value);
@@ -240,50 +256,6 @@ class _IndividuosSpreadsheetScreenState
     individuo.numero = newNum;
     await _saveIndividuo(individuo);
     _loadData();
-  }
-
-  Future<void> _updateFusteCount(
-      Individuo individuo, int newCount) async {
-    if (newCount < 1) return;
-    final currentFustes =
-        DatabaseHelper.instance.getFustesByIndividuo(individuo.id);
-    final currentCount = currentFustes.length;
-
-    if (newCount < currentCount) {
-      for (int i = currentCount - 1; i >= newCount; i--) {
-        await DatabaseHelper.instance.deleteFuste(currentFustes[i].id);
-      }
-    } else if (newCount > currentCount) {
-      for (int i = currentCount; i < newCount; i++) {
-        await DatabaseHelper.instance.insertFuste(Fuste(
-          id: const Uuid().v4(),
-          individuoId: individuo.id,
-          numeroFuste: i + 1,
-          altura: 0,
-          cap: 0,
-        ));
-      }
-    }
-
-    final updatedFustes =
-        DatabaseHelper.instance.getFustesByIndividuo(individuo.id);
-    for (int i = 0; i < updatedFustes.length; i++) {
-      if (updatedFustes[i].numeroFuste != i + 1) {
-        updatedFustes[i].numeroFuste = i + 1;
-        await DatabaseHelper.instance.insertFuste(updatedFustes[i]);
-      }
-    }
-
-    final finalFustes =
-        DatabaseHelper.instance.getFustesByIndividuo(individuo.id);
-    final idx = _individuos.indexWhere((r) => r.individuo.id == individuo.id);
-    if (idx != -1) {
-      _individuos[idx] = _IndividuoRow(
-        individuo: individuo,
-        fustes: finalFustes,
-      );
-    }
-    _rebuildDisplayRows();
   }
 
   Future<void> _selectDate(Individuo individuo) async {
@@ -419,6 +391,7 @@ class _IndividuosSpreadsheetScreenState
                     _buildHeaderRow(colWidths),
                     ..._displayRows.asMap().entries.map(
                         (e) => _buildDataRow(e.key, e.value, colWidths)),
+                    _buildAddRow(colWidths),
                   ],
                 ),
               ),
@@ -494,13 +467,6 @@ class _IndividuosSpreadsheetScreenState
     final bgColor = indIndex.isEven ? Colors.white : Colors.grey[50];
     int i = 0;
 
-    final fusteCount = _showFustes && fuste != null
-        ? _individuos
-            .firstWhere((r) => r.individuo.id == ind.id)
-            .fustes
-            .length
-        : 0;
-
     return Container(
       color: bgColor,
       child: Row(
@@ -524,25 +490,13 @@ class _IndividuosSpreadsheetScreenState
             ),
           if (_showFustes)
             _cellWithSuggestions(
-              value: row.isFirstFuste
-                  ? '$fusteCount'
-                  : '${fuste?.numeroFuste ?? ""}',
+              value: '${fuste?.numeroFuste ?? ""}',
               width: w[i++],
               options: [],
               keyboardType: TextInputType.number,
-              readOnly: !row.isFirstFuste,
-              textStyle: row.isFirstFuste
-                  ? null
-                  : TextStyle(fontSize: 12, color: Colors.grey[600]),
+              readOnly: true,
+              textStyle: TextStyle(fontSize: 12, color: Colors.grey[700]),
               cellKey: 'fuste_${ind.id}_${fuste?.id ?? "0"}',
-              onSubmitted: row.isFirstFuste
-                  ? (v) {
-                      final n = int.tryParse(v);
-                      if (n != null && n >= 1) {
-                        _updateFusteCount(ind, n);
-                      }
-                    }
-                  : null,
             ),
           _cellWithSuggestions(
             value: ind.nomeComum,
@@ -701,6 +655,52 @@ class _IndividuosSpreadsheetScreenState
           _dateCell(ind, w[i++]),
           _actionsCell(ind, displayIndex, w[i++]),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAddRow(List<double> w) {
+    int i = 0;
+    return Container(
+      color: Colors.grey[100],
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_showFustes)
+            _addCell(w[i++], onTap: _addNewIndividuo),
+          if (_showFustes)
+            _addCell(w[i++], onTap: _addFusteToLastIndividuo),
+          _emptyCell(w[i++]),
+          _emptyCell(w[i++]),
+          _emptyCell(w[i++]),
+          if (_isCenso) _emptyCell(w[i++]),
+          if (_isHerbaceo) _emptyCell(w[i++]),
+          if (_isHerbaceo && widget.parcela.fisionomia == 'Campo Rupestre')
+            _emptyCell(w[i++]),
+          if (_showFustes) _emptyCell(w[i++]),
+          if (_showFustes) _emptyCell(w[i++]),
+          if (_requiresDiametroCopa) _emptyCell(w[i++]),
+          if (_requiresDiametroCopa) _emptyCell(w[i++]),
+          if (_showFustes) _emptyCell(w[i++]),
+          _emptyCell(w[i++]),
+          _emptyCell(w[i++]),
+        ],
+      ),
+    );
+  }
+
+  Widget _addCell(double width, {required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: width,
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[300]!, width: 0.5),
+          color: Colors.grey[50],
+        ),
+        child: Icon(Icons.add_circle_outline, size: 20, color: Colors.green[700]),
       ),
     );
   }
