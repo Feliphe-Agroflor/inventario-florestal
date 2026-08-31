@@ -11,7 +11,6 @@ import 'individuo_form_screen.dart';
 class _IndividuoRow {
   final Individuo individuo;
   final List<Fuste> fustes;
-
   _IndividuoRow({required this.individuo, required this.fustes});
 }
 
@@ -19,7 +18,6 @@ class _DisplayRow {
   final Individuo individuo;
   final Fuste? fuste;
   final bool isFirstFuste;
-
   _DisplayRow({
     required this.individuo,
     this.fuste,
@@ -31,14 +29,12 @@ class IndividuosSpreadsheetScreen extends StatefulWidget {
   final Parcela parcela;
   final String estrato;
   final int? subParcelaFiltro;
-
   const IndividuosSpreadsheetScreen({
     super.key,
     required this.parcela,
     required this.estrato,
     this.subParcelaFiltro,
   });
-
   @override
   State<IndividuosSpreadsheetScreen> createState() =>
       _IndividuosSpreadsheetScreenState();
@@ -101,21 +97,14 @@ class _IndividuosSpreadsheetScreenState
 
   void _loadData() {
     List<Individuo> individuos;
-
     if (widget.subParcelaFiltro != null) {
       individuos = DatabaseHelper.instance
           .getIndividuosByParcelaEstratoSubParcela(
-        widget.parcela.id,
-        widget.estrato,
-        widget.subParcelaFiltro!,
-      );
+              widget.parcela.id, widget.estrato, widget.subParcelaFiltro!);
     } else if (_hasSubParcelas) {
       individuos = DatabaseHelper.instance
           .getIndividuosByParcelaEstratoSubParcela(
-        widget.parcela.id,
-        widget.estrato,
-        _currentSubParcela,
-      );
+              widget.parcela.id, widget.estrato, _currentSubParcela);
     } else {
       final all =
           DatabaseHelper.instance.getIndividuosByParcela(widget.parcela.id);
@@ -159,7 +148,6 @@ class _IndividuosSpreadsheetScreenState
     final nextNum = DatabaseHelper.instance
         .getNextIndividuoNumero(widget.parcela.id, widget.estrato);
     final subP = _hasSubParcelas ? _currentSubParcela : 1;
-
     final individuo = Individuo(
       id: const Uuid().v4(),
       parcelaId: widget.parcela.id,
@@ -172,9 +160,7 @@ class _IndividuosSpreadsheetScreenState
               .getNextNumeroGps(widget.parcela.id, widget.estrato)
           : null,
     );
-
     await DatabaseHelper.instance.insertIndividuo(individuo);
-
     if (_showFustes) {
       await DatabaseHelper.instance.insertFuste(Fuste(
         id: const Uuid().v4(),
@@ -184,9 +170,7 @@ class _IndividuosSpreadsheetScreenState
         cap: 0,
       ));
     }
-
     _loadData();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_horizontalScroll.hasClients) {
         _horizontalScroll.jumpTo(0);
@@ -214,54 +198,24 @@ class _IndividuosSpreadsheetScreenState
         ],
       ),
     );
-
     if (confirm == true) {
       await DatabaseHelper.instance.deleteIndividuo(individuo.id);
       _loadData();
     }
   }
 
-  Future<void> _updateIndividuoField(
-      Individuo individuo, String field, String value) async {
-    switch (field) {
-      case 'nomeComum':
-        individuo.nomeComum = value;
-        break;
-      case 'nomeCientifico':
-        individuo.nomeCientifico = value;
-        break;
-      case 'familia':
-        individuo.familia = value;
-        break;
-      case 'observacoes':
-        individuo.observacoes = value.isEmpty ? null : value;
-        break;
-      case 'numeroGps':
-        individuo.numeroGps = int.tryParse(value);
-        break;
-      case 'numeroIndividuos':
-        individuo.numeroIndividuos = int.tryParse(value);
-        break;
-      case 'numeroIndividuosEspecie':
-        individuo.numeroIndividuosEspecie = int.tryParse(value);
-        break;
-      case 'diametroCopa1':
-        individuo.diametroCopa1 =
-            double.tryParse(value.replaceAll(',', '.'));
-        break;
-      case 'diametroCopa2':
-        individuo.diametroCopa2 =
-            double.tryParse(value.replaceAll(',', '.'));
-        break;
-    }
+  Future<void> _saveIndividuo(Individuo individuo) async {
     await DatabaseHelper.instance.insertIndividuo(individuo);
+  }
+
+  Future<void> _saveFuste(Fuste fuste) async {
+    await DatabaseHelper.instance.insertFuste(fuste);
   }
 
   Future<void> _updateNumeroIndividuo(
       Individuo individuo, String value) async {
     final newNum = int.tryParse(value);
     if (newNum == null || newNum < 1) return;
-
     final existing = _individuos
         .where((r) =>
             r.individuo.numero == newNum &&
@@ -278,40 +232,17 @@ class _IndividuosSpreadsheetScreenState
       }
       return;
     }
-
     individuo.numero = newNum;
-    await DatabaseHelper.instance.insertIndividuo(individuo);
+    await _saveIndividuo(individuo);
     _loadData();
-  }
-
-  Future<void> _updateFusteField(
-      Fuste fuste, String field, String value) async {
-    switch (field) {
-      case 'altura':
-        fuste.altura = double.tryParse(value.replaceAll(',', '.')) ?? 0;
-        break;
-      case 'cap':
-        fuste.cap = double.tryParse(value.replaceAll(',', '.')) ?? 0;
-        break;
-    }
-    await DatabaseHelper.instance.insertFuste(fuste);
-  }
-
-  Future<void> _updateFusteEpifitas(
-      Fuste fuste, bool? value) async {
-    fuste.epifitas = value;
-    await DatabaseHelper.instance.insertFuste(fuste);
-    setState(() {});
   }
 
   Future<void> _updateFusteCount(
       Individuo individuo, int newCount) async {
     if (newCount < 1) return;
-
     final currentFustes =
         DatabaseHelper.instance.getFustesByIndividuo(individuo.id);
     final currentCount = currentFustes.length;
-
     if (newCount > currentCount) {
       for (int i = currentCount; i < newCount; i++) {
         await DatabaseHelper.instance.insertFuste(Fuste(
@@ -327,7 +258,6 @@ class _IndividuosSpreadsheetScreenState
         await DatabaseHelper.instance.deleteFuste(currentFustes[i].id);
       }
     }
-
     _loadData();
   }
 
@@ -341,7 +271,7 @@ class _IndividuosSpreadsheetScreenState
     );
     if (picked != null) {
       individuo.dataColeta = picked;
-      await DatabaseHelper.instance.insertIndividuo(individuo);
+      await _saveIndividuo(individuo);
       _loadData();
     }
   }
@@ -401,14 +331,12 @@ class _IndividuosSpreadsheetScreenState
                     _isFloristica
                         ? 'Nenhuma espécie cadastrada'
                         : 'Nenhum indivíduo cadastrado',
-                    style:
-                        TextStyle(fontSize: 18, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Toque no botão + para adicionar',
-                    style:
-                        TextStyle(fontSize: 14, color: Colors.grey[400]),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[400]),
                   ),
                 ],
               ),
@@ -419,8 +347,7 @@ class _IndividuosSpreadsheetScreenState
         backgroundColor: Colors.green[800],
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
-        label:
-            Text(_isFloristica ? 'Nova Espécie' : 'Novo Indivíduo'),
+        label: Text(_isFloristica ? 'Nova Espécie' : 'Novo Indivíduo'),
       ),
     );
   }
@@ -429,27 +356,24 @@ class _IndividuosSpreadsheetScreenState
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalWidth = constraints.maxWidth;
-
         final List<double> flexes = [];
-
-        if (_showFustes) flexes.add(1.5); // Nº
-        if (_showFustes) flexes.add(1.5); // Fuste
-        flexes.add(3); // Nome Comum
-        flexes.add(3); // Nome Científico
-        flexes.add(2.5); // Família
-        if (_isCenso) flexes.add(2); // Nº GPS
+        if (_showFustes) flexes.add(1.5);
+        if (_showFustes) flexes.add(1.5);
+        flexes.add(3);
+        flexes.add(3);
+        flexes.add(2.5);
+        if (_isCenso) flexes.add(2);
         if (_isHerbaceo) flexes.add(2);
         if (_isHerbaceo && widget.parcela.fisionomia == 'Campo Rupestre') {
           flexes.add(2);
         }
-        if (_showFustes) flexes.add(2); // Altura
-        if (_showFustes) flexes.add(2); // CAP
-        if (_requiresDiametroCopa) flexes.add(2); // Copa 1
-        if (_requiresDiametroCopa) flexes.add(2); // Copa 2
-        if (_showFustes) flexes.add(2); // Epífitas
-        flexes.add(2); // Data
-        flexes.add(1.2); // Ações
-
+        if (_showFustes) flexes.add(2);
+        if (_showFustes) flexes.add(2);
+        if (_requiresDiametroCopa) flexes.add(2);
+        if (_requiresDiametroCopa) flexes.add(2);
+        if (_showFustes) flexes.add(2);
+        flexes.add(2);
+        flexes.add(1.2);
         final totalFlex = flexes.fold(0.0, (a, b) => a + b);
         final colWidths =
             flexes.map((f) => (f / totalFlex) * totalWidth).toList();
@@ -468,11 +392,8 @@ class _IndividuosSpreadsheetScreenState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildHeaderRow(colWidths),
-                    ..._displayRows
-                        .asMap()
-                        .entries
-                        .map((e) =>
-                            _buildDataRow(e.key, e.value, colWidths)),
+                    ..._displayRows.asMap().entries.map(
+                        (e) => _buildDataRow(e.key, e.value, colWidths)),
                   ],
                 ),
               ),
@@ -543,11 +464,9 @@ class _IndividuosSpreadsheetScreenState
       int displayIndex, _DisplayRow row, List<double> w) {
     final ind = row.individuo;
     final fuste = row.fuste;
-
     final indIndex = _individuos.indexOf(
         _individuos.firstWhere((r) => r.individuo.id == ind.id));
     final bgColor = indIndex.isEven ? Colors.white : Colors.grey[50];
-
     int i = 0;
 
     return Container(
@@ -556,111 +475,175 @@ class _IndividuosSpreadsheetScreenState
         mainAxisSize: MainAxisSize.min,
         children: [
           if (_showFustes)
-            _numeroEditavelCell(ind, w[i++]),
+            _cellWithSuggestions(
+              value: '${ind.numero}',
+              width: w[i++],
+              options: [],
+              keyboardType: TextInputType.number,
+              readOnly: false,
+              fontStyle: FontStyle.normal,
+              textStyle: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.green[800],
+                fontSize: 13,
+              ),
+              onSubmitted: (v) => _updateNumeroIndividuo(ind, v),
+            ),
           if (_showFustes)
-            _fusteCountCell(ind, fuste, w[i++]),
-          _autocompleteCell(
+            _cellWithSuggestions(
+              value: fuste != null ? '${fuste.numeroFuste}' : '1',
+              width: w[i++],
+              options: [],
+              keyboardType: TextInputType.number,
+              readOnly: false,
+              onSubmitted: (v) {
+                final n = int.tryParse(v);
+                if (n != null && n >= 1) {
+                  _updateFusteCount(ind, n);
+                }
+              },
+            ),
+          _cellWithSuggestions(
             value: ind.nomeComum,
+            width: w[i++],
             options: DatabaseHelper.instance.getNomesComuns(),
-            width: w[i++],
-            onChanged: (v) =>
-                _updateIndividuoField(ind, 'nomeComum', v),
+            keyboardType: TextInputType.text,
+            readOnly: false,
+            onFieldChanged: (v) {
+              ind.nomeComum = v;
+              _saveIndividuo(ind);
+            },
           ),
-          _autocompleteCell(
+          _cellWithSuggestions(
             value: ind.nomeCientifico,
+            width: w[i++],
             options: DatabaseHelper.instance.getNomesCientificos(),
-            width: w[i++],
-            italic: true,
-            onChanged: (v) =>
-                _updateIndividuoField(ind, 'nomeCientifico', v),
+            keyboardType: TextInputType.text,
+            readOnly: false,
+            fontStyle: FontStyle.italic,
+            onFieldChanged: (v) {
+              ind.nomeCientifico = v;
+              _saveIndividuo(ind);
+            },
           ),
-          _autocompleteCell(
+          _cellWithSuggestions(
             value: ind.familia,
-            options: DatabaseHelper.instance.getFamilias(),
             width: w[i++],
-            onChanged: (v) =>
-                _updateIndividuoField(ind, 'familia', v),
+            options: DatabaseHelper.instance.getFamilias(),
+            keyboardType: TextInputType.text,
+            readOnly: false,
+            onFieldChanged: (v) {
+              ind.familia = v;
+              _saveIndividuo(ind);
+            },
           ),
           if (_isCenso)
-            _editableCell(
+            _cellWithSuggestions(
               value: ind.numeroGps?.toString() ?? '',
               width: w[i++],
-              inputType: TextInputType.number,
-              onChanged: (v) =>
-                  _updateIndividuoField(ind, 'numeroGps', v),
+              options: [],
+              keyboardType: TextInputType.number,
+              readOnly: false,
+              onFieldChanged: (v) {
+                ind.numeroGps = int.tryParse(v);
+                _saveIndividuo(ind);
+              },
             ),
           if (_isHerbaceo)
-            _editableCell(
+            _cellWithSuggestions(
               value: ind.numeroIndividuos?.toString() ?? '',
               width: w[i++],
-              inputType:
+              options: [],
+              keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (v) =>
-                  _updateIndividuoField(ind, 'numeroIndividuos', v),
+              readOnly: false,
+              onFieldChanged: (v) {
+                ind.numeroIndividuos = int.tryParse(v);
+                _saveIndividuo(ind);
+              },
             ),
           if (_isHerbaceo && widget.parcela.fisionomia == 'Campo Rupestre')
-            _editableCell(
+            _cellWithSuggestions(
               value: ind.numeroIndividuosEspecie?.toString() ?? '',
               width: w[i++],
-              inputType: TextInputType.number,
-              onChanged: (v) => _updateIndividuoField(
-                  ind, 'numeroIndividuosEspecie', v),
+              options: [],
+              keyboardType: TextInputType.number,
+              readOnly: false,
+              onFieldChanged: (v) {
+                ind.numeroIndividuosEspecie = int.tryParse(v);
+                _saveIndividuo(ind);
+              },
             ),
           if (_showFustes && fuste != null) ...[
-            _editableCell(
+            _cellWithSuggestions(
               value: fuste.altura > 0
-                  ? fuste.altura
-                      .toStringAsFixed(2)
-                      .replaceAll('.', ',')
+                  ? fuste.altura.toStringAsFixed(2).replaceAll('.', ',')
                   : '',
               width: w[i++],
-              inputType:
+              options: [],
+              keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (v) =>
-                  _updateFusteField(fuste, 'altura', v),
+              readOnly: false,
+              onFieldChanged: (v) {
+                fuste.altura =
+                    double.tryParse(v.replaceAll(',', '.')) ?? 0;
+                _saveFuste(fuste);
+              },
             ),
-            _editableCell(
+            _cellWithSuggestions(
               value: fuste.cap > 0
-                  ? fuste.cap
-                      .toStringAsFixed(2)
-                      .replaceAll('.', ',')
+                  ? fuste.cap.toStringAsFixed(2).replaceAll('.', ',')
                   : '',
               width: w[i++],
-              inputType:
+              options: [],
+              keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (v) =>
-                  _updateFusteField(fuste, 'cap', v),
+              readOnly: false,
+              onFieldChanged: (v) {
+                fuste.cap =
+                    double.tryParse(v.replaceAll(',', '.')) ?? 0;
+                _saveFuste(fuste);
+              },
             ),
           ] else if (_showFustes) ...[
             _emptyCell(w[i++]),
             _emptyCell(w[i++]),
           ],
           if (_requiresDiametroCopa) ...[
-            _editableCell(
+            _cellWithSuggestions(
               value: ind.diametroCopa1
                       ?.toStringAsFixed(2)
                       .replaceAll('.', ',') ??
                   '',
               width: w[i++],
-              inputType:
+              options: [],
+              keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (v) =>
-                  _updateIndividuoField(ind, 'diametroCopa1', v),
+              readOnly: false,
+              onFieldChanged: (v) {
+                ind.diametroCopa1 =
+                    double.tryParse(v.replaceAll(',', '.'));
+                _saveIndividuo(ind);
+              },
             ),
-            _editableCell(
+            _cellWithSuggestions(
               value: ind.diametroCopa2
                       ?.toStringAsFixed(2)
                       .replaceAll('.', ',') ??
                   '',
               width: w[i++],
-              inputType:
+              options: [],
+              keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (v) =>
-                  _updateIndividuoField(ind, 'diametroCopa2', v),
+              readOnly: false,
+              onFieldChanged: (v) {
+                ind.diametroCopa2 =
+                    double.tryParse(v.replaceAll(',', '.'));
+                _saveIndividuo(ind);
+              },
             ),
           ],
-          if (_showFustes)
-            _epifitasCell(fuste, w[i++]),
+          if (_showFustes) _epifitasCell(fuste, w[i++]),
           _dateCell(ind, w[i++]),
           _actionsCell(ind, displayIndex, w[i++]),
         ],
@@ -668,164 +651,28 @@ class _IndividuosSpreadsheetScreenState
     );
   }
 
-  Widget _numeroEditavelCell(Individuo ind, double width) {
-    return Container(
-      width: width,
-      height: 48,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!, width: 0.5),
-      ),
-      child: TextFormField(
-        initialValue: '${ind.numero}',
-        decoration: InputDecoration(
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-          border: InputBorder.none,
-          isDense: true,
-        ),
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: Colors.green[800],
-          fontSize: 13,
-        ),
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        onFieldSubmitted: (value) =>
-            _updateNumeroIndividuo(ind, value),
-      ),
-    );
-  }
-
-  Widget _fusteCountCell(
-      Individuo ind, Fuste? currentFuste, double width) {
-    return Container(
-      width: width,
-      height: 48,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!, width: 0.5),
-      ),
-      child: TextFormField(
-        initialValue: currentFuste != null
-            ? '${currentFuste.numeroFuste}'
-            : '1',
-        decoration: InputDecoration(
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-          border: InputBorder.none,
-          isDense: true,
-        ),
-        style: const TextStyle(fontSize: 12),
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        onChanged: (value) {
-          final newCount = int.tryParse(value);
-          if (newCount != null && newCount >= 1) {
-            _updateFusteCount(ind, newCount);
-          }
-        },
-      ),
-    );
-  }
-
-  Widget _editableCell({
+  Widget _cellWithSuggestions({
     required String value,
     required double width,
-    TextInputType? inputType,
-    required ValueChanged<String> onChanged,
-  }) {
-    final controller = TextEditingController(text: value);
-    return Container(
-      width: width,
-      height: 48,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!, width: 0.5),
-      ),
-      child: TextFormField(
-        controller: controller,
-        decoration: InputDecoration(
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-          border: InputBorder.none,
-          isDense: true,
-        ),
-        style: const TextStyle(fontSize: 12),
-        keyboardType: inputType,
-        inputFormatters: inputType ==
-                const TextInputType.numberWithOptions(decimal: true)
-            ? [
-                FilteringTextInputFormatter.allow(
-                    RegExp(r'^\d*[,\.]?\d{0,2}'))
-              ]
-            : inputType == TextInputType.number
-                ? [FilteringTextInputFormatter.digitsOnly]
-                : null,
-        onChanged: onChanged,
-      ),
-    );
-  }
-
-  Widget _autocompleteCell({
-    required String value,
     required List<String> options,
-    required double width,
-    bool italic = false,
-    required ValueChanged<String> onChanged,
+    required TextInputType keyboardType,
+    required bool readOnly,
+    FontStyle fontStyle = FontStyle.normal,
+    TextStyle? textStyle,
+    ValueChanged<String>? onFieldChanged,
+    ValueChanged<String>? onSubmitted,
   }) {
-    return Container(
+    return _AutocompleteCell(
+      key: ValueKey('${value}_$width'),
+      initialValue: value,
       width: width,
-      height: 48,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!, width: 0.5),
-      ),
-      child: Autocomplete<String>(
-        initialValue: TextEditingValue(text: value),
-        optionsBuilder: (TextEditingValue textEditingValue) {
-          if (textEditingValue.text.isEmpty) return options;
-          return options.where((o) => o
-              .toLowerCase()
-              .contains(textEditingValue.text.toLowerCase()));
-        },
-        onSelected: (selection) => onChanged(selection),
-        fieldViewBuilder:
-            (context, controller, focusNode, onSubmitted) {
-          controller.text = value;
-          return TextFormField(
-            controller: controller,
-            focusNode: focusNode,
-            decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 6, vertical: 8),
-              border: InputBorder.none,
-              isDense: true,
-            ),
-            style: TextStyle(
-              fontSize: 12,
-              fontStyle:
-                  italic ? FontStyle.italic : FontStyle.normal,
-            ),
-            onChanged: onChanged,
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _dateCell(Individuo ind, double width) {
-    return GestureDetector(
-      onTap: () => _selectDate(ind),
-      child: Container(
-        width: width,
-        height: 48,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!, width: 0.5),
-        ),
-        child: Text(
-          DateFormat('dd/MM/yy').format(ind.dataColeta),
-          style: const TextStyle(fontSize: 11),
-          textAlign: TextAlign.center,
-        ),
-      ),
+      options: options,
+      keyboardType: keyboardType,
+      readOnly: readOnly,
+      fontStyle: fontStyle,
+      textStyle: textStyle,
+      onFieldChanged: onFieldChanged,
+      onSubmitted: onSubmitted,
     );
   }
 
@@ -848,7 +695,11 @@ class _IndividuosSpreadsheetScreenState
                 DropdownMenuItem(value: true, child: Text('Sim')),
                 DropdownMenuItem(value: false, child: Text('Não')),
               ],
-              onChanged: (v) => _updateFusteEpifitas(fuste, v),
+              onChanged: (v) async {
+                fuste.epifitas = v;
+                await _saveFuste(fuste);
+                setState(() {});
+              },
             )
           : const Text('-', style: TextStyle(fontSize: 11)),
     );
@@ -861,6 +712,25 @@ class _IndividuosSpreadsheetScreenState
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[300]!, width: 0.5),
         color: Colors.grey[100],
+      ),
+    );
+  }
+
+  Widget _dateCell(Individuo ind, double width) {
+    return GestureDetector(
+      onTap: () => _selectDate(ind),
+      child: Container(
+        width: width,
+        height: 48,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[300]!, width: 0.5),
+        ),
+        child: Text(
+          DateFormat('dd/MM/yy').format(ind.dataColeta),
+          style: const TextStyle(fontSize: 11),
+          textAlign: TextAlign.center,
+        ),
       ),
     );
   }
@@ -913,6 +783,201 @@ class _IndividuosSpreadsheetScreenState
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AutocompleteCell extends StatefulWidget {
+  final String initialValue;
+  final double width;
+  final List<String> options;
+  final TextInputType keyboardType;
+  final bool readOnly;
+  final FontStyle fontStyle;
+  final TextStyle? textStyle;
+  final ValueChanged<String>? onFieldChanged;
+  final ValueChanged<String>? onSubmitted;
+
+  const _AutocompleteCell({
+    super.key,
+    required this.initialValue,
+    required this.width,
+    required this.options,
+    required this.keyboardType,
+    required this.readOnly,
+    this.fontStyle = FontStyle.normal,
+    this.textStyle,
+    this.onFieldChanged,
+    this.onSubmitted,
+  });
+
+  @override
+  State<_AutocompleteCell> createState() => _AutocompleteCellState();
+}
+
+class _AutocompleteCellState extends State<_AutocompleteCell> {
+  late TextEditingController _controller;
+  final FocusNode _focusNode = FocusNode();
+  List<String> _filteredOptions = [];
+  OverlayEntry? _overlayEntry;
+  final LayerLink _layerLink = LayerLink();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    _removeOverlay();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _AutocompleteCell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialValue != widget.initialValue &&
+        _controller.text != widget.initialValue) {
+      final sel = _controller.selection;
+      _controller.text = widget.initialValue;
+      if (sel.isValid) {
+        _controller.selection = sel;
+      }
+    }
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus) {
+      _removeOverlay();
+    }
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  void _showOverlay() {
+    _removeOverlay();
+    if (_filteredOptions.isEmpty) return;
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        width: widget.width,
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          offset: const Offset(0, 48),
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(4),
+            child: Container(
+              constraints: const BoxConstraints(maxHeight: 200),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: _filteredOptions.length,
+                itemBuilder: (context, index) {
+                  return InkWell(
+                    onTap: () {
+                      _controller.text = _filteredOptions[index];
+                      _controller.selection = TextSelection.fromPosition(
+                        TextPosition(
+                            offset: _filteredOptions[index].length),
+                      );
+                      widget.onFieldChanged
+                          ?.call(_filteredOptions[index]);
+                      _removeOverlay();
+                      _focusNode.unfocus();
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      child: Text(
+                        _filteredOptions[index],
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: widget.width,
+      height: 48,
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[300]!, width: 0.5),
+      ),
+      child: CompositedTransformTarget(
+        link: _layerLink,
+        child: TextFormField(
+          controller: _controller,
+          focusNode: _focusNode,
+          readOnly: widget.readOnly,
+          decoration: InputDecoration(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+            border: InputBorder.none,
+            isDense: true,
+          ),
+          style: widget.textStyle ?? TextStyle(
+            fontSize: 12,
+            fontStyle: widget.fontStyle,
+          ),
+          keyboardType: widget.keyboardType,
+          inputFormatters: widget.keyboardType ==
+                  const TextInputType.numberWithOptions(decimal: true)
+              ? [
+                  FilteringTextInputFormatter.allow(
+                      RegExp(r'^\d*[,\.]?\d{0,2}'))
+                ]
+              : widget.keyboardType == TextInputType.number
+                  ? [FilteringTextInputFormatter.digitsOnly]
+                  : null,
+          onChanged: (value) {
+            widget.onFieldChanged?.call(value);
+            if (widget.options.isNotEmpty) {
+              if (value.isEmpty) {
+                _filteredOptions = widget.options;
+              } else {
+                _filteredOptions = widget.options
+                    .where((o) => o
+                        .toLowerCase()
+                        .contains(value.toLowerCase()))
+                    .toList();
+              }
+              if (_filteredOptions.isNotEmpty && _focusNode.hasFocus) {
+                _showOverlay();
+              } else {
+                _removeOverlay();
+              }
+            }
+          },
+          onFieldSubmitted: (value) {
+            widget.onSubmitted?.call(value);
+          },
+        ),
       ),
     );
   }
