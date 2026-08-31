@@ -943,6 +943,7 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
   List<String> _filteredOptions = [];
   OverlayEntry? _overlayEntry;
   final LayerLink _layerLink = LayerLink();
+  bool _selectingSuggestion = false;
 
   @override
   void initState() {
@@ -975,7 +976,7 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
   }
 
   void _onFocusChange() {
-    if (!_focusNode.hasFocus) {
+    if (!_focusNode.hasFocus && !_selectingSuggestion) {
       _removeOverlay();
     }
   }
@@ -1013,13 +1014,17 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
                 itemBuilder: (context, index) {
                   return InkWell(
                     onTap: () {
+                      _selectingSuggestion = true;
                       final selected = _filteredOptions[index];
+                      _removeOverlay();
                       _controller.text = selected;
                       _controller.selection = TextSelection.fromPosition(
                         TextPosition(offset: selected.length),
                       );
                       widget.onFieldChanged?.call(selected);
-                      _removeOverlay();
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _selectingSuggestion = false;
+                      });
                     },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
