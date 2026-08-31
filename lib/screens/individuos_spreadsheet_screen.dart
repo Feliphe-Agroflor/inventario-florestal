@@ -949,6 +949,7 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
   final FocusNode _focusNode = FocusNode();
   List<String> _filteredOptions = [];
   bool _menuOpen = false;
+  bool _suppressListener = false;
 
   @override
   void initState() {
@@ -972,7 +973,9 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
         _controller.text != widget.initialValue) {
       final hasFocus = _focusNode.hasFocus;
       final sel = _controller.selection;
+      _suppressListener = true;
       _controller.text = widget.initialValue;
+      _suppressListener = false;
       if (hasFocus && sel.isValid) {
         _controller.selection = sel;
       }
@@ -980,6 +983,7 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
   }
 
   void _onTextChanged() {
+    if (_suppressListener) return;
     final value = _controller.text;
     widget.onFieldChanged?.call(value);
     if (widget.options.isNotEmpty && !_menuOpen) {
@@ -1035,10 +1039,12 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
     ).then((value) {
       _menuOpen = false;
       if (value != null && mounted) {
+        _suppressListener = true;
         _controller.text = value;
         _controller.selection = TextSelection.fromPosition(
           TextPosition(offset: value.length),
         );
+        _suppressListener = false;
         widget.onFieldChanged?.call(value);
       }
     });
