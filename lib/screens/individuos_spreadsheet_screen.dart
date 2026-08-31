@@ -233,6 +233,53 @@ class _IndividuosSpreadsheetScreenState
     _loadData();
   }
 
+  Future<void> _deleteFuste(Individuo individuo, Fuste fuste) async {
+    final currentFustes =
+        DatabaseHelper.instance.getFustesByIndividuo(individuo.id);
+    if (currentFustes.length <= 1) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Não é possível excluir o último fuste!'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirmar exclusão'),
+        content: Text(
+            'Deseja excluir o fuste Nº ${fuste.numeroFuste}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await DatabaseHelper.instance.deleteFuste(fuste.id);
+      final updatedFustes =
+          DatabaseHelper.instance.getFustesByIndividuo(individuo.id);
+      for (int i = 0; i < updatedFustes.length; i++) {
+        if (updatedFustes[i].numeroFuste != i + 1) {
+          updatedFustes[i].numeroFuste = i + 1;
+          await DatabaseHelper.instance.insertFuste(updatedFustes[i]);
+        }
+      }
+      _loadData();
+    }
+  }
+
   Future<void> _updateNumeroIndividuo(
       Individuo individuo, String value) async {
     final newNum = int.tryParse(value);
@@ -383,17 +430,23 @@ class _IndividuosSpreadsheetScreenState
             scrollDirection: Axis.horizontal,
             child: SizedBox(
               width: totalWidth,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.vertical,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeaderRow(colWidths),
-                    ..._displayRows.asMap().entries.map(
-                        (e) => _buildDataRow(e.key, e.value, colWidths)),
-                    _buildAddRow(colWidths),
-                  ],
-                ),
+              child: Column(
+                children: [
+                  _buildHeaderRow(colWidths),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.vertical,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ..._displayRows.asMap().entries.map(
+                              (e) => _buildDataRow(e.key, e.value, colWidths)),
+                          _buildAddRow(colWidths),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -507,7 +560,11 @@ class _IndividuosSpreadsheetScreenState
             cellKey: 'nome_${ind.id}',
             onFieldChanged: (v) {
               ind.nomeComum = v;
+            },
+            onSubmitted: (v) {
+              ind.nomeComum = v;
               _saveIndividuo(ind);
+              _rebuildDisplayRows();
             },
           ),
           _cellWithSuggestions(
@@ -520,7 +577,11 @@ class _IndividuosSpreadsheetScreenState
             cellKey: 'cient_${ind.id}',
             onFieldChanged: (v) {
               ind.nomeCientifico = v;
+            },
+            onSubmitted: (v) {
+              ind.nomeCientifico = v;
               _saveIndividuo(ind);
+              _rebuildDisplayRows();
             },
           ),
           _cellWithSuggestions(
@@ -653,7 +714,7 @@ class _IndividuosSpreadsheetScreenState
           ],
           if (_showFustes) _epifitasCell(fuste, w[i++]),
           _dateCell(ind, w[i++]),
-          _actionsCell(ind, displayIndex, w[i++]),
+          _actionsCell(ind, row, w[i++]),
         ],
       ),
     );
@@ -789,7 +850,7 @@ class _IndividuosSpreadsheetScreenState
     );
   }
 
-  Widget _actionsCell(Individuo ind, int displayIndex, double width) {
+  Widget _actionsCell(Individuo ind, _DisplayRow row, double width) {
     return Container(
       width: width,
       height: 48,
@@ -814,8 +875,10 @@ class _IndividuosSpreadsheetScreenState
                 ),
               ),
             ).then((_) => _loadData());
-          } else if (value == 'excluir') {
+          } else if (value == 'excluir_ind') {
             _deleteIndividuo(ind);
+          } else if (value == 'excluir_fuste' && row.fuste != null) {
+            _deleteFuste(ind, row.fuste!);
           }
         },
         itemBuilder: (context) => [
@@ -827,11 +890,21 @@ class _IndividuosSpreadsheetScreenState
               dense: true,
             ),
           ),
+          if (row.fuste != null)
+            PopupMenuItem(
+              value: 'excluir_fuste',
+              child: const ListTile(
+                leading: Icon(Icons.remove_circle, color: Colors.orange),
+                title: Text('Excluir fuste',
+                    style: TextStyle(color: Colors.orange)),
+                dense: true,
+              ),
+            ),
           const PopupMenuItem(
-            value: 'excluir',
+            value: 'excluir_ind',
             child: ListTile(
               leading: Icon(Icons.delete, color: Colors.red),
-              title: Text('Excluir',
+              title: Text('Excluir indivíduo',
                   style: TextStyle(color: Colors.red)),
               dense: true,
             ),
@@ -956,7 +1029,9 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
                       widget.onFieldChanged
                           ?.call(_filteredOptions[index]);
                       _removeOverlay();
-                      _focusNode.unfocus();
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _focusNode.unfocus();
+                      });
                     },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
