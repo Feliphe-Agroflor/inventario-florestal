@@ -540,6 +540,13 @@ class _IndividuosSpreadsheetScreenState
                 fontSize: 13,
               ),
               cellKey: 'num_${ind.id}',
+              onFieldChanged: (v) {
+                final newNum = int.tryParse(v);
+                if (newNum != null && newNum >= 1) {
+                  ind.numero = newNum;
+                  _saveIndividuo(ind);
+                }
+              },
               onSubmitted: (v) => _updateNumeroIndividuo(ind, v),
             ),
           if (_showFustes)
@@ -1001,9 +1008,24 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
               child: Text(o, style: const TextStyle(fontSize: 12)),
             ))
         .toList();
+
+    final renderBox = context.findRenderObject() as RenderBox?;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (renderBox == null || overlay == null) {
+      _menuOpen = false;
+      return;
+    }
+    final widgetPos = renderBox.localToGlobal(Offset.zero, ancestor: overlay);
+    final position = RelativeRect.fromLTRB(
+      widgetPos.dx,
+      widgetPos.dy + renderBox.size.height,
+      overlay.size.width - widgetPos.dx - renderBox.size.width,
+      overlay.size.height - widgetPos.dy - renderBox.size.height,
+    );
+
     showMenu<String>(
       context: context,
-      position: RelativeRect.fromLTRB(0, 50, widget.width, 0),
+      position: position,
       items: items,
       elevation: 4,
       constraints: BoxConstraints(
