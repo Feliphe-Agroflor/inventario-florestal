@@ -941,23 +941,18 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
   late TextEditingController _controller;
   final FocusNode _focusNode = FocusNode();
   List<String> _filteredOptions = [];
-  OverlayEntry? _overlayEntry;
-  final LayerLink _layerLink = LayerLink();
-  bool _selectingSuggestion = false;
+  bool _menuOpen = false;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.initialValue);
-    _focusNode.addListener(_onFocusChange);
   }
 
   @override
   void dispose() {
     _controller.dispose();
-    _focusNode.removeListener(_onFocusChange);
     _focusNode.dispose();
-    _removeOverlay();
     super.dispose();
   }
 
@@ -975,75 +970,46 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
     }
   }
 
-  void _onFocusChange() {
-    if (!_focusNode.hasFocus && !_selectingSuggestion) {
-      _removeOverlay();
-    }
-  }
-
-  void _removeOverlay() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
-  }
-
-  void _showOverlay() {
-    _removeOverlay();
-    if (_filteredOptions.isEmpty) return;
-
-    _overlayEntry = OverlayEntry(
-      builder: (overlayContext) => Positioned(
-        width: widget.width,
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: const Offset(0, 48),
-          child: Material(
-            elevation: 4,
-            borderRadius: BorderRadius.circular(4),
-            child: Container(
-              constraints: const BoxConstraints(maxHeight: 200),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: EdgeInsets.zero,
-                itemCount: _filteredOptions.length,
-                itemBuilder: (context, index) {
-                  return InkWell(
-                    onTap: () {
-                      _selectingSuggestion = true;
-                      final selected = _filteredOptions[index];
-                      _removeOverlay();
-                      _controller.text = selected;
-                      _controller.selection = TextSelection.fromPosition(
-                        TextPosition(offset: selected.length),
-                      );
-                      widget.onFieldChanged?.call(selected);
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _selectingSuggestion = false;
-                      });
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                      child: Text(
-                        _filteredOptions[index],
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
+  void _openMenu() {
+    if (_menuOpen || _filteredOptions.isEmpty || !_focusNode.hasFocus) return;
+    _menuOpen = true;
+    final items = _filteredOptions
+        .map((o) => PopupMenuItem<String>(
+              value: o,
+              height: 32,
+              child: Text(o, style: const TextStyle(fontSize: 12)),
+            ))
+        .toList();
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(0, 50, widget.width, 0),
+      items: items,
+      elevation: 4,
+      constraints: BoxConstraints(
+        maxHeight: 200,
+        minWidth: widget.width.clamp(150, 300).toDouble(),
       ),
-    );
+    ).then((value) {
+      _menuOpen = false;
+      if (value != null && mounted) {
+        _controller.text = value;
+        _controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: value.length),
+        );
+        widget.onFieldChanged?.call(value);
+      }
+    });
+  }
 
-    Overlay.of(context).insert(_overlayEntry!);
+  void _filterOptions(String value) {
+    if (widget.options.isEmpty) return;
+    if (value.isEmpty) {
+      _filteredOptions = widget.options;
+    } else {
+      _filteredOptions = widget.options
+          .where((o) => o.toLowerCase().contains(value.toLowerCase()))
+          .toList();
+    }
   }
 
   @override
@@ -1054,53 +1020,45 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey[300]!, width: 0.5),
       ),
-      child: CompositedTransformTarget(
-        link: _layerLink,
-        child: TextFormField(
-          controller: _controller,
-          focusNode: _focusNode,
-          readOnly: widget.readOnly,
-          decoration: InputDecoration(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-            border: InputBorder.none,
-            isDense: true,
-          ),
-          style: widget.textStyle ??
-              TextStyle(
-                fontSize: 12,
-                fontStyle: widget.fontStyle,
-              ),
-          keyboardType: widget.keyboardType,
-          inputFormatters: widget.keyboardType ==
-                  const TextInputType.numberWithOptions(decimal: true)
-              ? [
-                  FilteringTextInputFormatter.allow(
-                      RegExp(r'^\d*[,\.]?\d{0,2}'))
-                ]
-              : widget.keyboardType == TextInputType.number
-                  ? [FilteringTextInputFormatter.digitsOnly]
-                  : null,
-          onChanged: (value) {
-            widget.onFieldChanged?.call(value);
-            if (widget.options.isNotEmpty) {
-              if (value.isEmpty) {
-                _filteredOptions = widget.options;
-              } else {
-                _filteredOptions = widget.options
-                    .where((o) =>
-                        o.toLowerCase().contains(value.toLowerCase()))
-                    .toList();
-              }
-              if (_filteredOptions.isNotEmpty && _focusNode.hasFocus) {
-                _showOverlay();
-              } else {
-                _removeOverlay();
+      child: TextFormField(
+        controller: _controller,
+        focusNode: _focusNode,
+        readOnly: widget.readOnly,
+        decoration: InputDecoration(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          border: InputBorder.none,
+          isDense: true,
+        ),
+        style: widget.textStyle ??
+            TextStyle(
+              fontSize: 12,
+              fontStyle: widget.fontStyle,
+            ),
+        keyboardType: widget.keyboardType,
+        inputFormatters: widget.keyboardType ==
+                const TextInputType.numberWithOptions(decimal: true)
+            ? [
+                FilteringTextInputFormatter.allow(
+                    RegExp(r'^\d*[,\.]?\d{0,2}'))
+              ]
+            : widget.keyboardType == TextInputType.number
+                ? [FilteringTextInputFormatter.digitsOnly]
+                : null,
+        onChanged: (value) {
+          widget.onFieldChanged?.call(value);
+          if (widget.options.isNotEmpty) {
+            _filterOptions(value);
+            if (_filteredOptions.isNotEmpty && _focusNode.hasFocus) {
+              if (!_menuOpen) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _openMenu();
+                });
               }
             }
-          },
-          onFieldSubmitted: widget.onSubmitted,
-        ),
+          }
+        },
+        onFieldSubmitted: widget.onSubmitted,
       ),
     );
   }
