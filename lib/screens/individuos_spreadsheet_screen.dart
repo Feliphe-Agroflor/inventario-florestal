@@ -837,8 +837,8 @@ class _IndividuosSpreadsheetScreenState
               cellKey: 'nind_${ind.id}',
               onFieldChanged: (v) {
                 ind.numeroIndividuos = int.tryParse(v);
-                _saveIndividuo(ind);
               },
+              onFocusLost: () => _saveIndividuo(ind),
               onSubmitted: widget.parcela.fisionomia != 'Campo Rupestre'
                   ? (v) async {
                       final newNum = int.tryParse(v);
@@ -1027,6 +1027,7 @@ class _IndividuosSpreadsheetScreenState
     TextStyle? textStyle,
     ValueChanged<String>? onFieldChanged,
     ValueChanged<String>? onSubmitted,
+    VoidCallback? onFocusLost,
     String? cellKey,
     bool hasError = false,
   }) {
@@ -1041,6 +1042,7 @@ class _IndividuosSpreadsheetScreenState
       textStyle: textStyle,
       onFieldChanged: onFieldChanged,
       onSubmitted: onSubmitted,
+      onFocusLost: onFocusLost,
       hasError: hasError,
     );
   }
@@ -1179,6 +1181,7 @@ class _AutocompleteCell extends StatefulWidget {
   final TextStyle? textStyle;
   final ValueChanged<String>? onFieldChanged;
   final ValueChanged<String>? onSubmitted;
+  final VoidCallback? onFocusLost;
   final bool hasError;
 
   const _AutocompleteCell({
@@ -1192,6 +1195,7 @@ class _AutocompleteCell extends StatefulWidget {
     this.textStyle,
     this.onFieldChanged,
     this.onSubmitted,
+    this.onFocusLost,
     this.hasError = false,
   });
 
@@ -1229,6 +1233,7 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
   void _onFocusChanged() {
     if (!_focusNode.hasFocus) {
       _removeOverlay();
+      widget.onFocusLost?.call();
     }
   }
 
