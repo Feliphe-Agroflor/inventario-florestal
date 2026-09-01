@@ -247,6 +247,42 @@ class _IndividuosSpreadsheetScreenState
     return null;
   }
 
+  bool _hasAlturaError(Individuo ind, Fuste fuste) {
+    final estrato = ind.estrato;
+    final fisionomia = widget.parcela.fisionomia;
+    final metodo = widget.parcela.metodo;
+
+    if (estrato == 'Herbáceo' || estrato == 'Florística') return false;
+
+    if (estrato == 'Arbóreo' || (metodo == 'Censo' && estrato == 'Censo')) {
+      if (fuste.altura > 0 && fuste.altura < 2) return true;
+    }
+
+    if (estrato == 'Arbustivo' && fisionomia != 'Campo Rupestre') {
+      if (fuste.altura > 0 && fuste.altura < 1.5) return true;
+    }
+
+    return false;
+  }
+
+  bool _hasCapError(Individuo ind, Fuste fuste) {
+    final estrato = ind.estrato;
+    final fisionomia = widget.parcela.fisionomia;
+    final metodo = widget.parcela.metodo;
+
+    if (estrato == 'Herbáceo' || estrato == 'Florística') return false;
+
+    if (estrato == 'Arbóreo' || (metodo == 'Censo' && estrato == 'Censo')) {
+      if (fuste.cap > 0 && fuste.cap < 15) return true;
+    }
+
+    if (estrato == 'Arbustivo' && fisionomia != 'Campo Rupestre') {
+      if (fuste.cap >= 15) return true;
+    }
+
+    return false;
+  }
+
   void _showValidationIfNeeded(Individuo ind, Fuste fuste) {
     final error = _validateFuste(ind, fuste);
     if (error != null && mounted) {
@@ -704,6 +740,7 @@ class _IndividuosSpreadsheetScreenState
                   const TextInputType.numberWithOptions(decimal: true),
               readOnly: false,
               cellKey: 'alt_${fuste.id}',
+              hasError: _hasAlturaError(ind, fuste),
               onFieldChanged: (v) {
                 fuste.altura =
                     double.tryParse(v.replaceAll(',', '.')) ?? 0;
@@ -712,6 +749,7 @@ class _IndividuosSpreadsheetScreenState
               onSubmitted: (v) {
                 fuste.altura = double.tryParse(v.replaceAll(',', '.')) ?? 0;
                 _saveFuste(fuste);
+                setState(() {});
                 _showValidationIfNeeded(ind, fuste);
               },
             ),
@@ -725,6 +763,7 @@ class _IndividuosSpreadsheetScreenState
                   const TextInputType.numberWithOptions(decimal: true),
               readOnly: false,
               cellKey: 'cap_${fuste.id}',
+              hasError: _hasCapError(ind, fuste),
               onFieldChanged: (v) {
                 fuste.cap =
                     double.tryParse(v.replaceAll(',', '.')) ?? 0;
@@ -733,6 +772,7 @@ class _IndividuosSpreadsheetScreenState
               onSubmitted: (v) {
                 fuste.cap = double.tryParse(v.replaceAll(',', '.')) ?? 0;
                 _saveFuste(fuste);
+                setState(() {});
                 _showValidationIfNeeded(ind, fuste);
               },
             ),
@@ -845,6 +885,7 @@ class _IndividuosSpreadsheetScreenState
     ValueChanged<String>? onFieldChanged,
     ValueChanged<String>? onSubmitted,
     String? cellKey,
+    bool hasError = false,
   }) {
     return _AutocompleteCell(
       key: cellKey != null ? ValueKey(cellKey) : null,
@@ -857,6 +898,7 @@ class _IndividuosSpreadsheetScreenState
       textStyle: textStyle,
       onFieldChanged: onFieldChanged,
       onSubmitted: onSubmitted,
+      hasError: hasError,
     );
   }
 
@@ -994,6 +1036,7 @@ class _AutocompleteCell extends StatefulWidget {
   final TextStyle? textStyle;
   final ValueChanged<String>? onFieldChanged;
   final ValueChanged<String>? onSubmitted;
+  final bool hasError;
 
   const _AutocompleteCell({
     super.key,
@@ -1006,6 +1049,7 @@ class _AutocompleteCell extends StatefulWidget {
     this.textStyle,
     this.onFieldChanged,
     this.onSubmitted,
+    this.hasError = false,
   });
 
   @override
@@ -1026,15 +1070,23 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
     super.initState();
     _controller = TextEditingController(text: widget.initialValue);
     _controller.addListener(_onTextChanged);
+    _focusNode.addListener(_onFocusChanged);
   }
 
   @override
   void dispose() {
     _removeOverlay();
     _controller.removeListener(_onTextChanged);
+    _focusNode.removeListener(_onFocusChanged);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  void _onFocusChanged() {
+    if (!_focusNode.hasFocus) {
+      widget.onSubmitted?.call(_controller.text);
+    }
   }
 
   @override
@@ -1114,7 +1166,11 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
         height: 48,
         child: Container(
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!, width: 0.5),
+            border: Border.all(
+              color: widget.hasError ? Colors.red : Colors.grey[300]!,
+              width: widget.hasError ? 2.0 : 0.5,
+            ),
+            color: widget.hasError ? Colors.red[50] : null,
           ),
           child: TextFormField(
             controller: _controller,
