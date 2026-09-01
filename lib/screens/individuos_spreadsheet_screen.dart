@@ -48,6 +48,7 @@ class _IndividuosSpreadsheetScreenState
   List<_DisplayRow> _displayRows = [];
   late TabController _tabController;
   final ScrollController _horizontalScroll = ScrollController();
+  bool _isExpanding = false;
 
   bool get _isHerbaceo => widget.estrato == 'Herbáceo';
   bool get _isFloristica => widget.estrato == 'Florística';
@@ -152,6 +153,7 @@ class _IndividuosSpreadsheetScreenState
 
   Future<void> _expandPendingIndividuos() async {
     if (!_isHerbaceo || widget.parcela.fisionomia == 'Campo Rupestre') return;
+    if (_isExpanding) return;
 
     final subP = _hasSubParcelas ? _currentSubParcela : 1;
 
@@ -463,6 +465,8 @@ class _IndividuosSpreadsheetScreenState
   Future<void> _expandNumeroIndividuos(
       Individuo individuo, int newNum) async {
     if (newNum < 1) return;
+    if (_isExpanding) return;
+    _isExpanding = true;
 
     individuo.numeroIndividuos = newNum;
     await _saveIndividuo(individuo);
@@ -513,6 +517,7 @@ class _IndividuosSpreadsheetScreenState
     await _saveIndividuo(individuo);
 
     _loadData();
+    _isExpanding = false;
   }
 
   Future<void> _selectDate(Individuo individuo) async {
