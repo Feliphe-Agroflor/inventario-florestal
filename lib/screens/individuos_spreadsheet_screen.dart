@@ -769,10 +769,21 @@ class _IndividuosSpreadsheetScreenState
                 _saveIndividuo(ind);
               },
               onSubmitted: widget.parcela.fisionomia != 'Campo Rupestre'
-                  ? (v) {
+                  ? (v) async {
                       final newNum = int.tryParse(v);
                       if (newNum != null && newNum >= 1) {
-                        _expandNumeroIndividuos(ind, newNum);
+                        try {
+                          await _expandNumeroIndividuos(ind, newNum);
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Erro: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
                       }
                     }
                   : null,
