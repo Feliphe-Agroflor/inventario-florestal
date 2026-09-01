@@ -508,6 +508,11 @@ class _IndividuosSpreadsheetScreenState
       }
     }
 
+    for (final i in sameSpecies) {
+      i.numeroIndividuos = null;
+      await _saveIndividuo(i);
+    }
+
     _loadData();
   }
 
