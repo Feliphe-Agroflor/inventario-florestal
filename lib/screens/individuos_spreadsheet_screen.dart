@@ -364,29 +364,7 @@ class _IndividuosSpreadsheetScreenState
               )
             : null,
       ),
-      body: _individuos.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.table_chart,
-                      size: 80, color: Colors.green[200]),
-                  const SizedBox(height: 16),
-                  Text(
-                    _isFloristica
-                        ? 'Nenhuma espécie cadastrada'
-                        : 'Nenhum indivíduo cadastrado',
-                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Toque no botão + para adicionar',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[400]),
-                  ),
-                ],
-              ),
-            )
-          : _buildSpreadsheet(),
+      body: _buildSpreadsheet(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addNewIndividuo,
         backgroundColor: Colors.green[800],
