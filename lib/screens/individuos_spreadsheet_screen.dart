@@ -412,6 +412,10 @@ class _IndividuosSpreadsheetScreenState
         .toList()
       ..sort((a, b) => a.numero.compareTo(b.numero));
 
+    final maxNum = allByParcela.isNotEmpty
+        ? allByParcela.map((i) => i.numero).reduce((a, b) => a > b ? a : b)
+        : 0;
+
     final groupStart = individuo.numero;
     final sameSpecies = allByParcela
         .where((i) =>
@@ -425,13 +429,12 @@ class _IndividuosSpreadsheetScreenState
     final currentCount = 1 + extras.length;
 
     if (newNum > currentCount) {
+      var nextNum = maxNum + 1;
       for (int j = currentCount; j < newNum; j++) {
-        final nextNum = DatabaseHelper.instance
-            .getNextIndividuoNumero(widget.parcela.id, widget.estrato);
         await DatabaseHelper.instance.insertIndividuo(Individuo(
           id: const Uuid().v4(),
           parcelaId: widget.parcela.id,
-          numero: nextNum,
+          numero: nextNum++,
           nomeComum: individuo.nomeComum,
           nomeCientifico: individuo.nomeCientifico,
           familia: individuo.familia,
