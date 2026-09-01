@@ -951,23 +951,24 @@ class _AutocompleteCell extends StatefulWidget {
 class _AutocompleteCellState extends State<_AutocompleteCell> {
   late TextEditingController _controller;
   final FocusNode _focusNode = FocusNode();
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
   List<String> _filteredOptions = [];
-  bool _showSuggestions = false;
   bool _suppressListener = false;
+  bool _isSelectingSuggestion = false;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.initialValue);
     _controller.addListener(_onTextChanged);
-    _focusNode.addListener(_onFocusChanged);
   }
 
   @override
   void dispose() {
+    _removeOverlay();
     _controller.removeListener(_onTextChanged);
     _controller.dispose();
-    _focusNode.removeListener(_onFocusChanged);
     _focusNode.dispose();
     super.dispose();
   }
@@ -988,18 +989,11 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
     }
   }
 
-  void _onFocusChanged() {
-    if (!_focusNode.hasFocus && _showSuggestions) {
-      setState(() {
-        _showSuggestions = false;
-      });
-    }
-  }
-
   void _onTextChanged() {
-    if (_suppressListener) return;
+    if (_suppressListener || _isSelectingSuggestion) return;
     final value = _controller.text;
     widget.onFieldChanged?.call(value);
+
     if (widget.options.isNotEmpty) {
       if (value.isEmpty) {
         _filteredOptions = widget.options;
@@ -1008,102 +1002,138 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
             .where((o) => o.toLowerCase().contains(value.toLowerCase()))
             .toList();
       }
-      final shouldShow = _filteredOptions.isNotEmpty && _focusNode.hasFocus;
-      if (_showSuggestions != shouldShow || _showSuggestions) {
-        setState(() {
-          _showSuggestions = shouldShow;
-        });
+      if (_filteredOptions.isNotEmpty && _focusNode.hasFocus) {
+        _showOverlay();
+      } else {
+        _removeOverlay();
       }
-    } else if (_showSuggestions) {
-      setState(() {
-        _showSuggestions = false;
-      });
+    } else {
+      _removeOverlay();
     }
+  }
+
+  void _showOverlay() {
+    _removeOverlay();
+    _overlayEntry = OverlayEntry(
+      builder: (context) => _SuggestionOverlay(
+        layerLink: _layerLink,
+        options: _filteredOptions,
+        width: widget.width.clamp(150, 300).toDouble(),
+        onSelected: (option) {
+          _isSelectingSuggestion = true;
+          _suppressListener = true;
+          _controller.text = option;
+          _controller.selection = TextSelection.fromPosition(
+            TextPosition(offset: option.length),
+          );
+          _suppressListener = false;
+          widget.onFieldChanged?.call(option);
+          _removeOverlay();
+          _isSelectingSuggestion = false;
+        },
+      ),
+    );
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: widget.width,
-      height: 48,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!, width: 0.5),
-              ),
-              child: TextFormField(
-                controller: _controller,
-                focusNode: _focusNode,
-                readOnly: widget.readOnly,
-                decoration: InputDecoration(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                  border: InputBorder.none,
-                  isDense: true,
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: SizedBox(
+        width: widget.width,
+        height: 48,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey[300]!, width: 0.5),
+          ),
+          child: TextFormField(
+            controller: _controller,
+            focusNode: _focusNode,
+            readOnly: widget.readOnly,
+            decoration: InputDecoration(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              border: InputBorder.none,
+              isDense: true,
+            ),
+            style: widget.textStyle ??
+                TextStyle(
+                  fontSize: 12,
+                  fontStyle: widget.fontStyle,
                 ),
-                style: widget.textStyle ??
-                    TextStyle(
-                      fontSize: 12,
-                      fontStyle: widget.fontStyle,
-                    ),
-                keyboardType: widget.keyboardType,
-                inputFormatters: widget.keyboardType ==
-                        const TextInputType.numberWithOptions(decimal: true)
-                    ? [
-                        FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*[,\.]?\d{0,2}'))
-                      ]
-                    : widget.keyboardType == TextInputType.number
-                        ? [FilteringTextInputFormatter.digitsOnly]
-                        : null,
-                onFieldSubmitted: widget.onSubmitted,
-              ),
+            keyboardType: widget.keyboardType,
+            inputFormatters: widget.keyboardType ==
+                    const TextInputType.numberWithOptions(decimal: true)
+                ? [
+                    FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*[,\.]?\d{0,2}'))
+                  ]
+                : widget.keyboardType == TextInputType.number
+                    ? [FilteringTextInputFormatter.digitsOnly]
+                    : null,
+            onFieldSubmitted: widget.onSubmitted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SuggestionOverlay extends StatelessWidget {
+  final LayerLink layerLink;
+  final List<String> options;
+  final double width;
+  final ValueChanged<String> onSelected;
+
+  const _SuggestionOverlay({
+    required this.layerLink,
+    required this.options,
+    required this.width,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      width: width,
+      child: CompositedTransformFollower(
+        link: layerLink,
+        showWhenUnlinked: false,
+        offset: const Offset(0, 48),
+        child: Material(
+          elevation: 4,
+          borderRadius: BorderRadius.circular(2),
+          child: Container(
+            constraints: const BoxConstraints(maxHeight: 200),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(2),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              itemCount: options.length,
+              itemBuilder: (context, index) {
+                final option = options[index];
+                return InkWell(
+                  onTap: () => onSelected(option),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    child: Text(option, style: const TextStyle(fontSize: 12)),
+                  ),
+                );
+              },
             ),
           ),
-          if (_showSuggestions)
-            Positioned(
-              left: 0,
-              top: 48,
-              child: Material(
-                elevation: 4,
-                child: Container(
-                  width: widget.width.clamp(150, 300).toDouble(),
-                  constraints: const BoxConstraints(maxHeight: 200),
-                  child: ListView.builder(
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    itemCount: _filteredOptions.length,
-                    itemBuilder: (context, index) {
-                      final option = _filteredOptions[index];
-                      return InkWell(
-                        onTap: () {
-                          _suppressListener = true;
-                          _controller.text = option;
-                          _controller.selection = TextSelection.fromPosition(
-                            TextPosition(offset: option.length),
-                          );
-                          _suppressListener = false;
-                          widget.onFieldChanged?.call(option);
-                          setState(() {
-                            _showSuggestions = false;
-                          });
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          child: Text(option,
-                              style: const TextStyle(fontSize: 12)),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-        ],
+        ),
       ),
     );
   }
