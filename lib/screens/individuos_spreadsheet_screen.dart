@@ -150,7 +150,58 @@ class _IndividuosSpreadsheetScreenState
     });
   }
 
+  Future<void> _expandPendingIndividuos() async {
+    if (!_isHerbaceo || widget.parcela.fisionomia == 'Campo Rupestre') return;
+
+    final subP = _hasSubParcelas ? _currentSubParcela : 1;
+    final freshIndividuos = DatabaseHelper.instance
+        .getIndividuosByParcelaEstratoSubParcela(
+            widget.parcela.id, widget.estrato, subP);
+
+    for (final ind in freshIndividuos) {
+      if (ind.numeroIndividuos == null || ind.numeroIndividuos! <= 1) continue;
+
+      final sameSpecies = freshIndividuos
+          .where((i) =>
+              i.nomeComum == ind.nomeComum &&
+              i.nomeCientifico == ind.nomeCientifico &&
+              i.numero >= ind.numero)
+          .toList()
+        ..sort((a, b) => a.numero.compareTo(b.numero));
+
+      final extras = sameSpecies.where((i) => i.id != ind.id).toList();
+      final currentCount = 1 + extras.length;
+      final needed = ind.numeroIndividuos!;
+
+      if (needed > currentCount) {
+        final maxNum = freshIndividuos.isNotEmpty
+            ? freshIndividuos
+                .map((i) => i.numero)
+                .reduce((a, b) => a > b ? a : b)
+            : 0;
+        var nextNum = maxNum + 1;
+        for (int j = currentCount; j < needed; j++) {
+          await DatabaseHelper.instance.insertIndividuo(Individuo(
+            id: const Uuid().v4(),
+            parcelaId: widget.parcela.id,
+            numero: nextNum++,
+            nomeComum: ind.nomeComum,
+            nomeCientifico: ind.nomeCientifico,
+            familia: ind.familia,
+            dataColeta: ind.dataColeta,
+            estrato: widget.estrato,
+            subParcela: ind.subParcela,
+            numeroIndividuos: needed,
+            observacoes: ind.observacoes,
+          ));
+        }
+      }
+    }
+  }
+
   Future<void> _addNewIndividuo() async {
+    await _expandPendingIndividuos();
+
     final nextNum = DatabaseHelper.instance
         .getNextIndividuoNumero(widget.parcela.id, widget.estrato);
     final subP = _hasSubParcelas ? _currentSubParcela : 1;
