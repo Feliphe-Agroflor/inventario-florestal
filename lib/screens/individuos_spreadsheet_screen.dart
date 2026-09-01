@@ -499,7 +499,6 @@ class _IndividuosSpreadsheetScreenState
           dataColeta: individuo.dataColeta,
           estrato: widget.estrato,
           subParcela: individuo.subParcela,
-          numeroIndividuos: newNum,
           observacoes: individuo.observacoes,
         ));
       }
