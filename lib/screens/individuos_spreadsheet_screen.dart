@@ -396,6 +396,62 @@ class _IndividuosSpreadsheetScreenState
     _loadData();
   }
 
+  Future<void> _expandNumeroIndividuos(
+      Individuo individuo, int newNum) async {
+    if (newNum < 1) return;
+
+    individuo.numeroIndividuos = newNum;
+    await _saveIndividuo(individuo);
+
+    final allByParcela = _individuos
+        .where((r) =>
+            r.individuo.parcelaId == individuo.parcelaId &&
+            r.individuo.estrato == individuo.estrato &&
+            r.individuo.subParcela == individuo.subParcela)
+        .map((r) => r.individuo)
+        .toList()
+      ..sort((a, b) => a.numero.compareTo(b.numero));
+
+    final groupStart = individuo.numero;
+    final sameSpecies = allByParcela
+        .where((i) =>
+            i.nomeComum == individuo.nomeComum &&
+            i.nomeCientifico == individuo.nomeCientifico &&
+            i.numero >= groupStart)
+        .toList()
+      ..sort((a, b) => a.numero.compareTo(b.numero));
+
+    final extras = sameSpecies.where((i) => i.id != individuo.id).toList();
+    final currentCount = 1 + extras.length;
+
+    if (newNum > currentCount) {
+      for (int j = currentCount; j < newNum; j++) {
+        final nextNum = DatabaseHelper.instance
+            .getNextIndividuoNumero(widget.parcela.id, widget.estrato);
+        await DatabaseHelper.instance.insertIndividuo(Individuo(
+          id: const Uuid().v4(),
+          parcelaId: widget.parcela.id,
+          numero: nextNum,
+          nomeComum: individuo.nomeComum,
+          nomeCientifico: individuo.nomeCientifico,
+          familia: individuo.familia,
+          dataColeta: individuo.dataColeta,
+          estrato: widget.estrato,
+          subParcela: individuo.subParcela,
+          numeroIndividuos: newNum,
+          observacoes: individuo.observacoes,
+        ));
+      }
+    } else if (newNum < currentCount) {
+      final toDelete = extras.sublist(newNum - 1);
+      for (final extra in toDelete) {
+        await DatabaseHelper.instance.deleteIndividuo(extra.id);
+      }
+    }
+
+    _loadData();
+  }
+
   Future<void> _selectDate(Individuo individuo) async {
     final picked = await showDatePicker(
       context: context,
@@ -715,6 +771,14 @@ class _IndividuosSpreadsheetScreenState
                 ind.numeroIndividuos = int.tryParse(v);
                 _saveIndividuo(ind);
               },
+              onSubmitted: widget.parcela.fisionomia != 'Campo Rupestre'
+                  ? (v) {
+                      final newNum = int.tryParse(v);
+                      if (newNum != null && newNum >= 1) {
+                        _expandNumeroIndividuos(ind, newNum);
+                      }
+                    }
+                  : null,
             ),
           if (_isHerbaceo && widget.parcela.fisionomia == 'Campo Rupestre')
             _cellWithSuggestions(
