@@ -150,7 +150,71 @@ class _IndividuosSpreadsheetScreenState
     });
   }
 
+  Future<void> _expandPendingIndividuos() async {
+    if (!_isHerbaceo || widget.parcela.fisionomia == 'Campo Rupestre') return;
+
+    final subP = _hasSubParcelas ? _currentSubParcela : 1;
+
+    while (true) {
+      final fresh = DatabaseHelper.instance
+          .getIndividuosByParcelaEstratoSubParcela(
+              widget.parcela.id, widget.estrato, subP);
+
+      Individuo? toExpand;
+      for (final ind in fresh) {
+        if (ind.numeroIndividuos == null || ind.numeroIndividuos! <= 1) continue;
+
+        final sameSpecies = fresh
+            .where((i) =>
+                i.nomeComum == ind.nomeComum &&
+                i.nomeCientifico == ind.nomeCientifico &&
+                i.numero >= ind.numero)
+            .toList();
+
+        if (ind.numeroIndividuos! > sameSpecies.length) {
+          toExpand = ind;
+          break;
+        }
+      }
+
+      if (toExpand == null) break;
+
+      final needed = toExpand.numeroIndividuos!;
+      final sameSpecies = fresh
+          .where((i) =>
+              i.nomeComum == toExpand!.nomeComum &&
+              i.nomeCientifico == toExpand.nomeCientifico &&
+              i.numero >= toExpand.numero)
+          .toList();
+      final currentCount = sameSpecies.length;
+
+      final maxNum = fresh.isNotEmpty
+          ? fresh.map((i) => i.numero).reduce((a, b) => a > b ? a : b)
+          : 0;
+      var nextNum = maxNum + 1;
+      for (int j = currentCount; j < needed; j++) {
+        await DatabaseHelper.instance.insertIndividuo(Individuo(
+          id: const Uuid().v4(),
+          parcelaId: widget.parcela.id,
+          numero: nextNum++,
+          nomeComum: toExpand.nomeComum,
+          nomeCientifico: toExpand.nomeCientifico,
+          familia: toExpand.familia,
+          dataColeta: toExpand.dataColeta,
+          estrato: widget.estrato,
+          subParcela: toExpand.subParcela,
+          observacoes: toExpand.observacoes,
+        ));
+      }
+
+      toExpand.numeroIndividuos = null;
+      await _saveIndividuo(toExpand);
+    }
+  }
+
   Future<void> _addNewIndividuo() async {
+    await _expandPendingIndividuos();
+
     final nextNum = DatabaseHelper.instance
         .getNextIndividuoNumero(widget.parcela.id, widget.estrato);
     final subP = _hasSubParcelas ? _currentSubParcela : 1;
@@ -445,6 +509,9 @@ class _IndividuosSpreadsheetScreenState
         await DatabaseHelper.instance.deleteIndividuo(extra.id);
       }
     }
+
+    individuo.numeroIndividuos = null;
+    await _saveIndividuo(individuo);
 
     _loadData();
   }
