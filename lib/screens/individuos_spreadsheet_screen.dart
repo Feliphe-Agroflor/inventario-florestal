@@ -404,6 +404,7 @@ class _IndividuosSpreadsheetScreenState
         final List<double> flexes = [];
         if (_showFustes) flexes.add(1.5);
         if (_showFustes) flexes.add(1.5);
+        if (_isHerbaceo) flexes.add(1.5);
         flexes.add(3);
         flexes.add(3);
         flexes.add(2.5);
@@ -465,6 +466,7 @@ class _IndividuosSpreadsheetScreenState
         children: [
           if (_showFustes) _headerCell('Nº', w[i++]),
           if (_showFustes) _headerCell('Fuste', w[i++]),
+          if (_isHerbaceo) _headerCell('Nº', w[i++]),
           _headerCell('Nome Comum', w[i++]),
           _headerCell('Nome Científico', w[i++]),
           _headerCell('Família', w[i++]),
@@ -558,6 +560,29 @@ class _IndividuosSpreadsheetScreenState
               readOnly: true,
               textStyle: TextStyle(fontSize: 12, color: Colors.grey[700]),
               cellKey: 'fuste_${ind.id}_${fuste?.id ?? "0"}',
+            ),
+          if (_isHerbaceo)
+            _cellWithSuggestions(
+              value: '${ind.numero}',
+              width: w[i++],
+              options: [],
+              keyboardType: TextInputType.number,
+              readOnly: false,
+              fontStyle: FontStyle.normal,
+              textStyle: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.green[800],
+                fontSize: 13,
+              ),
+              cellKey: 'num_${ind.id}',
+              onFieldChanged: (v) {
+                final newNum = int.tryParse(v);
+                if (newNum != null && newNum >= 1) {
+                  ind.numero = newNum;
+                  _saveIndividuo(ind);
+                }
+              },
+              onSubmitted: (v) => _updateNumeroIndividuo(ind, v),
             ),
           _cellWithSuggestions(
             value: ind.nomeComum,
@@ -731,6 +756,7 @@ class _IndividuosSpreadsheetScreenState
             _addCell(w[i++], onTap: _addNewIndividuo),
           if (_showFustes)
             _addCell(w[i++], onTap: _addFusteToLastIndividuo),
+          if (_isHerbaceo) _addCell(w[i++], onTap: _addNewIndividuo),
           _emptyCell(w[i++]),
           _emptyCell(w[i++]),
           _emptyCell(w[i++]),
@@ -948,7 +974,7 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
   late TextEditingController _controller;
   final FocusNode _focusNode = FocusNode();
   List<String> _filteredOptions = [];
-  bool _menuOpen = false;
+  bool _showSuggestions = false;
   bool _suppressListener = false;
 
   @override
@@ -956,12 +982,14 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
     super.initState();
     _controller = TextEditingController(text: widget.initialValue);
     _controller.addListener(_onTextChanged);
+    _focusNode.addListener(_onFocusChanged);
   }
 
   @override
   void dispose() {
     _controller.removeListener(_onTextChanged);
     _controller.dispose();
+    _focusNode.removeListener(_onFocusChanged);
     _focusNode.dispose();
     super.dispose();
   }
@@ -982,11 +1010,19 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
     }
   }
 
+  void _onFocusChanged() {
+    if (!_focusNode.hasFocus && _showSuggestions) {
+      setState(() {
+        _showSuggestions = false;
+      });
+    }
+  }
+
   void _onTextChanged() {
     if (_suppressListener) return;
     final value = _controller.text;
     widget.onFieldChanged?.call(value);
-    if (widget.options.isNotEmpty && !_menuOpen) {
+    if (widget.options.isNotEmpty) {
       if (value.isEmpty) {
         _filteredOptions = widget.options;
       } else {
@@ -994,96 +1030,102 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
             .where((o) => o.toLowerCase().contains(value.toLowerCase()))
             .toList();
       }
-      if (_filteredOptions.isNotEmpty && _focusNode.hasFocus) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _openMenu();
+      final shouldShow = _filteredOptions.isNotEmpty && _focusNode.hasFocus;
+      if (_showSuggestions != shouldShow || _showSuggestions) {
+        setState(() {
+          _showSuggestions = shouldShow;
         });
       }
+    } else if (_showSuggestions) {
+      setState(() {
+        _showSuggestions = false;
+      });
     }
-  }
-
-  void _openMenu() {
-    if (_menuOpen || _filteredOptions.isEmpty || !_focusNode.hasFocus) return;
-    _menuOpen = true;
-    final items = _filteredOptions
-        .map((o) => PopupMenuItem<String>(
-              value: o,
-              height: 32,
-              child: Text(o, style: const TextStyle(fontSize: 12)),
-            ))
-        .toList();
-
-    final renderBox = context.findRenderObject() as RenderBox?;
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
-    if (renderBox == null || overlay == null) {
-      _menuOpen = false;
-      return;
-    }
-    final widgetPos = renderBox.localToGlobal(Offset.zero, ancestor: overlay);
-    final position = RelativeRect.fromLTRB(
-      widgetPos.dx,
-      widgetPos.dy + renderBox.size.height,
-      overlay.size.width - widgetPos.dx - renderBox.size.width,
-      overlay.size.height - widgetPos.dy - renderBox.size.height,
-    );
-
-    showMenu<String>(
-      context: context,
-      position: position,
-      items: items,
-      elevation: 4,
-      constraints: BoxConstraints(
-        maxHeight: 200,
-        minWidth: widget.width.clamp(150, 300).toDouble(),
-      ),
-    ).then((value) {
-      _menuOpen = false;
-      if (value != null && mounted) {
-        _suppressListener = true;
-        _controller.text = value;
-        _controller.selection = TextSelection.fromPosition(
-          TextPosition(offset: value.length),
-        );
-        _suppressListener = false;
-        widget.onFieldChanged?.call(value);
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: widget.width,
       height: 48,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!, width: 0.5),
-      ),
-      child: TextFormField(
-        controller: _controller,
-        focusNode: _focusNode,
-        readOnly: widget.readOnly,
-        decoration: InputDecoration(
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-          border: InputBorder.none,
-          isDense: true,
-        ),
-        style: widget.textStyle ??
-            TextStyle(
-              fontSize: 12,
-              fontStyle: widget.fontStyle,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey[300]!, width: 0.5),
+              ),
+              child: TextFormField(
+                controller: _controller,
+                focusNode: _focusNode,
+                readOnly: widget.readOnly,
+                decoration: InputDecoration(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                  border: InputBorder.none,
+                  isDense: true,
+                ),
+                style: widget.textStyle ??
+                    TextStyle(
+                      fontSize: 12,
+                      fontStyle: widget.fontStyle,
+                    ),
+                keyboardType: widget.keyboardType,
+                inputFormatters: widget.keyboardType ==
+                        const TextInputType.numberWithOptions(decimal: true)
+                    ? [
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*[,\.]?\d{0,2}'))
+                      ]
+                    : widget.keyboardType == TextInputType.number
+                        ? [FilteringTextInputFormatter.digitsOnly]
+                        : null,
+                onFieldSubmitted: widget.onSubmitted,
+              ),
             ),
-        keyboardType: widget.keyboardType,
-        inputFormatters: widget.keyboardType ==
-                const TextInputType.numberWithOptions(decimal: true)
-            ? [
-                FilteringTextInputFormatter.allow(
-                    RegExp(r'^\d*[,\.]?\d{0,2}'))
-              ]
-            : widget.keyboardType == TextInputType.number
-                ? [FilteringTextInputFormatter.digitsOnly]
-                : null,
-        onFieldSubmitted: widget.onSubmitted,
+          ),
+          if (_showSuggestions)
+            Positioned(
+              left: 0,
+              top: 48,
+              child: Material(
+                elevation: 4,
+                child: Container(
+                  width: widget.width.clamp(150, 300).toDouble(),
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    itemCount: _filteredOptions.length,
+                    itemBuilder: (context, index) {
+                      final option = _filteredOptions[index];
+                      return InkWell(
+                        onTap: () {
+                          _suppressListener = true;
+                          _controller.text = option;
+                          _controller.selection = TextSelection.fromPosition(
+                            TextPosition(offset: option.length),
+                          );
+                          _suppressListener = false;
+                          widget.onFieldChanged?.call(option);
+                          setState(() {
+                            _showSuggestions = false;
+                          });
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          child: Text(option,
+                              style: const TextStyle(fontSize: 12)),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
