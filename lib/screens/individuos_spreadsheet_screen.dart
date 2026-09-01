@@ -403,25 +403,19 @@ class _IndividuosSpreadsheetScreenState
     individuo.numeroIndividuos = newNum;
     await _saveIndividuo(individuo);
 
-    final allByParcela = _individuos
-        .where((r) =>
-            r.individuo.parcelaId == individuo.parcelaId &&
-            r.individuo.estrato == individuo.estrato &&
-            r.individuo.subParcela == individuo.subParcela)
-        .map((r) => r.individuo)
-        .toList()
-      ..sort((a, b) => a.numero.compareTo(b.numero));
+    final freshIndividuos = DatabaseHelper.instance
+        .getIndividuosByParcelaEstratoSubParcela(
+            widget.parcela.id, widget.estrato, individuo.subParcela);
 
-    final maxNum = allByParcela.isNotEmpty
-        ? allByParcela.map((i) => i.numero).reduce((a, b) => a > b ? a : b)
+    final maxNum = freshIndividuos.isNotEmpty
+        ? freshIndividuos.map((i) => i.numero).reduce((a, b) => a > b ? a : b)
         : 0;
 
-    final groupStart = individuo.numero;
-    final sameSpecies = allByParcela
+    final sameSpecies = freshIndividuos
         .where((i) =>
             i.nomeComum == individuo.nomeComum &&
             i.nomeCientifico == individuo.nomeCientifico &&
-            i.numero >= groupStart)
+            i.numero >= individuo.numero)
         .toList()
       ..sort((a, b) => a.numero.compareTo(b.numero));
 
