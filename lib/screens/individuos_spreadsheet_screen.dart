@@ -1146,6 +1146,7 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
 
   void _onFocusChanged() {
     if (!_focusNode.hasFocus) {
+      _removeOverlay();
       widget.onSubmitted?.call(_controller.text);
     }
   }
@@ -1258,7 +1259,7 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
                 : widget.keyboardType == TextInputType.number
                     ? [FilteringTextInputFormatter.digitsOnly]
                     : null,
-            onFieldSubmitted: widget.onSubmitted,
+            onFieldSubmitted: (_) {},
           ),
         ),
       ),
