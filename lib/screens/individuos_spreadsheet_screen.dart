@@ -218,6 +218,60 @@ class _IndividuosSpreadsheetScreenState
     await DatabaseHelper.instance.insertFuste(fuste);
   }
 
+  String? _validateFuste(Individuo ind, Fuste fuste) {
+    final estrato = ind.estrato;
+    final fisionomia = widget.parcela.fisionomia;
+    final metodo = widget.parcela.metodo;
+
+    if (estrato == 'Herbáceo' || estrato == 'Florística') return null;
+
+    if (estrato == 'Arbóreo' ||
+        (metodo == 'Censo' && estrato == 'Censo')) {
+      if (fuste.altura > 0 && fuste.altura < 2) {
+        return 'Arbóreo: altura deve ser ≥ 2 m (atual: ${fuste.altura.toStringAsFixed(2)} m)';
+      }
+      if (fuste.cap > 0 && fuste.cap < 15) {
+        return 'Arbóreo: CAP deve ser ≥ 15 cm (atual: ${fuste.cap.toStringAsFixed(2)} cm)';
+      }
+    }
+
+    if (estrato == 'Arbustivo' && fisionomia != 'Campo Rupestre') {
+      if (fuste.cap >= 15) {
+        return 'Arbustivo: CAP deve ser < 15 cm (atual: ${fuste.cap.toStringAsFixed(2)} cm)';
+      }
+      if (fuste.altura > 0 && fuste.altura < 1.5) {
+        return 'Arbustivo: altura deve ser ≥ 1,5 m (atual: ${fuste.altura.toStringAsFixed(2)} m)';
+      }
+    }
+
+    return null;
+  }
+
+  void _showValidationIfNeeded(Individuo ind, Fuste fuste) {
+    final error = _validateFuste(ind, fuste);
+    if (error != null && mounted) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange[700]),
+              const SizedBox(width: 8),
+              const Text('Atenção'),
+            ],
+          ),
+          content: Text(error),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   Future<void> _addFusteToLastIndividuo() async {
     if (_individuos.isEmpty) return;
     final lastRow = _individuos.last;
@@ -655,6 +709,11 @@ class _IndividuosSpreadsheetScreenState
                     double.tryParse(v.replaceAll(',', '.')) ?? 0;
                 _saveFuste(fuste);
               },
+              onSubmitted: (v) {
+                fuste.altura = double.tryParse(v.replaceAll(',', '.')) ?? 0;
+                _saveFuste(fuste);
+                _showValidationIfNeeded(ind, fuste);
+              },
             ),
             _cellWithSuggestions(
               value: fuste.cap > 0
@@ -670,6 +729,11 @@ class _IndividuosSpreadsheetScreenState
                 fuste.cap =
                     double.tryParse(v.replaceAll(',', '.')) ?? 0;
                 _saveFuste(fuste);
+              },
+              onSubmitted: (v) {
+                fuste.cap = double.tryParse(v.replaceAll(',', '.')) ?? 0;
+                _saveFuste(fuste);
+                _showValidationIfNeeded(ind, fuste);
               },
             ),
           ] else if (_showFustes) ...[
