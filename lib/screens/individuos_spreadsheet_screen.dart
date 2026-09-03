@@ -49,6 +49,8 @@ class _IndividuosSpreadsheetScreenState
   late TabController _tabController;
   final ScrollController _horizontalScroll = ScrollController();
   bool _isExpanding = false;
+  bool _isFilteringActive = false;
+  Map<String, Set<String>> _columnFilters = {};
 
   bool get _isHerbaceo => widget.estrato == 'Herbáceo';
   bool get _isFloristica => widget.estrato == 'Florística';
@@ -128,27 +130,31 @@ class _IndividuosSpreadsheetScreenState
   }
 
   void _rebuildDisplayRows() {
-    List<_DisplayRow> rows = [];
-    for (var row in _individuos) {
-      if (_showFustes && row.fustes.isNotEmpty) {
-        for (int f = 0; f < row.fustes.length; f++) {
+    if (_columnFilters.isNotEmpty) {
+      _applyFilters();
+    } else {
+      List<_DisplayRow> rows = [];
+      for (var row in _individuos) {
+        if (_showFustes && row.fustes.isNotEmpty) {
+          for (int f = 0; f < row.fustes.length; f++) {
+            rows.add(_DisplayRow(
+              individuo: row.individuo,
+              fuste: row.fustes[f],
+              isFirstFuste: f == 0,
+            ));
+          }
+        } else {
           rows.add(_DisplayRow(
             individuo: row.individuo,
-            fuste: row.fustes[f],
-            isFirstFuste: f == 0,
+            fuste: null,
+            isFirstFuste: true,
           ));
         }
-      } else {
-        rows.add(_DisplayRow(
-          individuo: row.individuo,
-          fuste: null,
-          isFirstFuste: true,
-        ));
       }
+      setState(() {
+        _displayRows = rows;
+      });
     }
-    setState(() {
-      _displayRows = rows;
-    });
   }
 
   Future<void> _expandPendingIndividuos() async {
@@ -548,6 +554,186 @@ class _IndividuosSpreadsheetScreenState
     }
   }
 
+  void _toggleFiltering() {
+    setState(() {
+      _isFilteringActive = !_isFilteringActive;
+      if (!_isFilteringActive) {
+        _columnFilters.clear();
+        _applyFilters();
+      }
+    });
+  }
+
+  void _applyFilters() {
+    if (_columnFilters.isEmpty) {
+      _displayRows = _individuos.expand((row) {
+        if (row.fustes.isEmpty) {
+          return [_DisplayRow(individuo: row.individuo, isFirstFuste: true)];
+        }
+        return row.fustes.asMap().entries.map((e) => _DisplayRow(
+              individuo: row.individuo,
+              fuste: e.value,
+              isFirstFuste: e.key == 0,
+            ));
+      }).toList();
+      return;
+    }
+
+    _displayRows = _individuos.expand((row) {
+      if (row.fustes.isEmpty) {
+        return [_DisplayRow(individuo: row.individuo, isFirstFuste: true)];
+      }
+      return row.fustes.asMap().entries.map((e) => _DisplayRow(
+            individuo: row.individuo,
+            fuste: e.value,
+            isFirstFuste: e.key == 0,
+          ));
+    }).toList();
+
+    for (final entry in _columnFilters.entries) {
+      if (entry.value.isEmpty) continue;
+      _displayRows = _displayRows.where((row) {
+        final value = _getColumnValue(row, entry.key);
+        return entry.value.contains(value);
+      }).toList();
+    }
+  }
+
+  String _getColumnValue(_DisplayRow row, String column) {
+    final ind = row.individuo;
+    final fuste = row.fuste;
+    switch (column) {
+      case 'numero':
+        return '${ind.numero}';
+      case 'fuste':
+        return '${fuste?.numeroFuste ?? ""}';
+      case 'nomeComum':
+        return ind.nomeComum;
+      case 'nomeCientifico':
+        return ind.nomeCientifico;
+      case 'familia':
+        return ind.familia;
+      case 'altura':
+        return fuste?.altura != null ? '${fuste!.altura}' : '';
+      case 'cap':
+        return fuste?.cap != null ? '${fuste!.cap}' : '';
+      case 'copa1':
+        return ind.diametroCopa1 != null ? '${ind.diametroCopa1}' : '';
+      case 'copa2':
+        return ind.diametroCopa2 != null ? '${ind.diametroCopa2}' : '';
+      case 'epifitas':
+        return fuste?.epifitas == true ? 'Sim' : 'Não';
+      case 'data':
+        return '${ind.dataColeta.day}/${ind.dataColeta.month}/${ind.dataColeta.year}';
+      default:
+        return '';
+    }
+  }
+
+  Set<String> _getUniqueValuesForColumn(String column) {
+    return _displayRows.map((row) => _getColumnValue(row, column)).toSet();
+  }
+
+  void _showFilterDialog(String column, String columnName) {
+    final uniqueValues = _getUniqueValuesForColumn(column);
+    final currentFilters = _columnFilters[column] ?? {};
+    final tempFilters = Set<String>.from(currentFilters);
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Filtrar: $columnName'),
+          content: SizedBox(
+            width: 300,
+            height: 400,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        setDialogState(() {
+                          if (tempFilters.length == uniqueValues.length) {
+                            tempFilters.clear();
+                          } else {
+                            tempFilters.addAll(uniqueValues);
+                          }
+                        });
+                      },
+                      child: Text(
+                        tempFilters.length == uniqueValues.length
+                            ? 'Desmarcar Tudo'
+                            : 'Marcar Tudo',
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: uniqueValues.length,
+                    itemBuilder: (context, index) {
+                      final value = uniqueValues.elementAt(index);
+                      final isSelected = tempFilters.contains(value);
+                      return CheckboxListTile(
+                        value: isSelected,
+                        onChanged: (selected) {
+                          setDialogState(() {
+                            if (selected == true) {
+                              tempFilters.add(value);
+                            } else {
+                              tempFilters.remove(value);
+                            }
+                          });
+                        },
+                        title: Text(
+                          value.isEmpty ? '(vazio)' : value,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        dense: true,
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _columnFilters.remove(column);
+                  _applyFilters();
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text('Limpar Filtro'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  if (tempFilters.isEmpty) {
+                    _columnFilters.remove(column);
+                  } else {
+                    _columnFilters[column] = tempFilters;
+                  }
+                  _applyFilters();
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text('Aplicar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -563,6 +749,18 @@ class _IndividuosSpreadsheetScreenState
         ),
         backgroundColor: Colors.green[800],
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: Icon(
+              _isFilteringActive ? Icons.filter_alt : Icons.filter_alt_off,
+              color: _isFilteringActive ? Colors.yellow : Colors.white,
+            ),
+            onPressed: _toggleFiltering,
+            tooltip: _isFilteringActive
+                ? 'Desativar filtros'
+                : 'Ativar filtros',
+          ),
+        ],
         bottom: _hasSubParcelas
             ? TabBar(
                 controller: _tabController,
@@ -657,12 +855,12 @@ class _IndividuosSpreadsheetScreenState
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (_showFustes) _headerCell('Nº', w[i++]),
-          if (_showFustes) _headerCell('Fuste', w[i++]),
-          if (_isHerbaceo) _headerCell('Nº', w[i++]),
-          _headerCell('Nome Comum', w[i++]),
-          _headerCell('Nome Científico', w[i++]),
-          _headerCell('Família', w[i++]),
+          if (_showFustes) _headerCell('Nº', w[i++], columnKey: 'numero'),
+          if (_showFustes) _headerCell('Fuste', w[i++], columnKey: 'fuste'),
+          if (_isHerbaceo) _headerCell('Nº', w[i++], columnKey: 'numero'),
+          _headerCell('Nome Comum', w[i++], columnKey: 'nomeComum'),
+          _headerCell('Nome Científico', w[i++], columnKey: 'nomeCientifico'),
+          _headerCell('Família', w[i++], columnKey: 'familia'),
           if (_isCenso) _headerCell('Nº GPS', w[i++]),
           if (_isHerbaceo)
             _headerCell(
@@ -672,37 +870,60 @@ class _IndividuosSpreadsheetScreenState
                 w[i++]),
           if (_isHerbaceo && widget.parcela.fisionomia == 'Campo Rupestre')
             _headerCell('Nº Indiv. Esp.', w[i++]),
-          if (_showFustes) _headerCell('Altura (m)', w[i++]),
-          if (_showFustes) _headerCell('CAP (cm)', w[i++]),
-          if (_requiresDiametroCopa) _headerCell('Copa 1 (m)', w[i++]),
-          if (_requiresDiametroCopa) _headerCell('Copa 2 (m)', w[i++]),
-          if (_showFustes && widget.estrato == 'Arbóreo') _headerCell('Epífitas', w[i++]),
-          _headerCell('Data', w[i++]),
+          if (_showFustes) _headerCell('Altura (m)', w[i++], columnKey: 'altura'),
+          if (_showFustes) _headerCell('CAP (cm)', w[i++], columnKey: 'cap'),
+          if (_requiresDiametroCopa) _headerCell('Copa 1 (m)', w[i++], columnKey: 'copa1'),
+          if (_requiresDiametroCopa) _headerCell('Copa 2 (m)', w[i++], columnKey: 'copa2'),
+          if (_showFustes && widget.estrato == 'Arbóreo') _headerCell('Epífitas', w[i++], columnKey: 'epifitas'),
+          _headerCell('Data', w[i++], columnKey: 'data'),
           _headerCell('', w[i++]),
         ],
       ),
     );
   }
 
-  Widget _headerCell(String text, double width) {
-    return Container(
-      width: width,
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.green[900]!, width: 0.5),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 11,
+  Widget _headerCell(String text, double width, {String? columnKey}) {
+    final hasFilter = columnKey != null && _columnFilters.containsKey(columnKey);
+    return GestureDetector(
+      onTap: _isFilteringActive && columnKey != null
+          ? () => _showFilterDialog(columnKey, text)
+          : null,
+      child: Container(
+        width: width,
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.green[900]!, width: 0.5),
+          color: hasFilter ? Colors.green[600] : null,
         ),
-        textAlign: TextAlign.center,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (_isFilteringActive && columnKey != null) ...[
+              const SizedBox(width: 4),
+              Icon(
+                hasFilter ? Icons.filter_list : Icons.filter_list_off,
+                size: 14,
+                color: hasFilter ? Colors.yellow : Colors.white70,
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
