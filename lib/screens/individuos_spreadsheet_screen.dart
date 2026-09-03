@@ -917,7 +917,7 @@ class _IndividuosSpreadsheetScreenState
             if (_isFilteringActive && columnKey != null) ...[
               const SizedBox(width: 4),
               Icon(
-                hasFilter ? Icons.filter_list : Icons.filter_list_off,
+                hasFilter ? Icons.filter_list : Icons.tune,
                 size: 14,
                 color: hasFilter ? Colors.yellow : Colors.white70,
               ),
