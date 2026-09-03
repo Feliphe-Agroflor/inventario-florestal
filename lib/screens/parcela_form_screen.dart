@@ -26,7 +26,7 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
 
   String _fisionomia = 'Floresta Estacional Semidecidual';
   String _metodo = 'Parcela';
-  String? _estagioSucessional;
+  String _estagioSucessional = 'Inicial';
   DateTime _dataColeta = DateTime.now();
   List<String> _responsaveisSugestoes = [];
   List<String> _identificadoresSugestoes = [];
@@ -54,7 +54,7 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
       _nomeController.text = widget.parcela!.nomeParcela;
       _fisionomia = widget.parcela!.fisionomia;
       _metodo = widget.parcela!.metodo;
-      _estagioSucessional = widget.parcela!.estagioSucessional;
+      _estagioSucessional = widget.parcela!.estagioSucessional ?? 'Inicial';
       _dataColeta = widget.parcela!.dataColeta;
       _responsavelController.text = widget.parcela!.responsavel ?? '';
       _observacoesController.text = widget.parcela!.observacoes ?? '';
@@ -260,44 +260,21 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
               ),
               if (_fisionomia == 'Floresta Estacional Semidecidual') ...[
                 const SizedBox(height: 16),
-                Card(
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Estágio Sucessional',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green[800],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 4,
-                          children: _estagiosSucessionais.map((e) {
-                            final isSelected = _estagioSucessional == e;
-                            return ChoiceChip(
-                              label: Text(
-                                e,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isSelected ? Colors.white : Colors.black87,
-                                ),
-                              ),
-                              selected: isSelected,
-                              selectedColor: Colors.green[800],
-                              onSelected: (_) => setState(() => _estagioSucessional = e),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ),
+                DropdownButtonFormField<String>(
+                  initialValue: _estagioSucessional,
+                  decoration: const InputDecoration(
+                    labelText: 'Estágio Sucessional',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.eco),
                   ),
+                  items: _estagiosSucessionais.map((e) {
+                    return DropdownMenuItem(value: e, child: Text(e));
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _estagioSucessional = value);
+                    }
+                  },
                 ),
               ],
               const SizedBox(height: 16),
