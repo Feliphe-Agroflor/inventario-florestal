@@ -355,6 +355,17 @@ class _IndividuosSpreadsheetScreenState
     return false;
   }
 
+  bool _hasNomeError(Individuo ind) {
+    return ind.nomeComum.isEmpty &&
+        ind.nomeCientifico.isEmpty &&
+        ind.familia.isEmpty;
+  }
+
+  bool _hasCopaError(Individuo ind) {
+    if (!_requiresDiametroCopa) return false;
+    return ind.diametroCopa1 == null && ind.diametroCopa2 == null;
+  }
+
   void _showValidationIfNeeded(Individuo ind, Fuste fuste) {
     final error = _validateFuste(ind, fuste);
     if (error != null && mounted) {
@@ -1003,6 +1014,7 @@ class _IndividuosSpreadsheetScreenState
             keyboardType: TextInputType.text,
             readOnly: false,
             cellKey: 'nome_${ind.id}',
+            hasError: _hasNomeError(ind),
             onFieldChanged: (v) {
               ind.nomeComum = v;
               _saveIndividuo(ind);
@@ -1016,6 +1028,7 @@ class _IndividuosSpreadsheetScreenState
             readOnly: false,
             fontStyle: FontStyle.italic,
             cellKey: 'cient_${ind.id}',
+            hasError: _hasNomeError(ind),
             onFieldChanged: (v) {
               ind.nomeCientifico = v;
               _saveIndividuo(ind);
@@ -1028,6 +1041,7 @@ class _IndividuosSpreadsheetScreenState
             keyboardType: TextInputType.text,
             readOnly: false,
             cellKey: 'fam_${ind.id}',
+            hasError: _hasNomeError(ind),
             onFieldChanged: (v) {
               ind.familia = v;
               _saveIndividuo(ind);
@@ -1155,6 +1169,7 @@ class _IndividuosSpreadsheetScreenState
                   const TextInputType.numberWithOptions(decimal: true),
               readOnly: false,
               cellKey: 'copa1_${ind.id}',
+              hasError: _hasCopaError(ind),
               onFieldChanged: (v) {
                 ind.diametroCopa1 =
                     double.tryParse(v.replaceAll(',', '.'));
@@ -1172,6 +1187,7 @@ class _IndividuosSpreadsheetScreenState
                   const TextInputType.numberWithOptions(decimal: true),
               readOnly: false,
               cellKey: 'copa2_${ind.id}',
+              hasError: _hasCopaError(ind),
               onFieldChanged: (v) {
                 ind.diametroCopa2 =
                     double.tryParse(v.replaceAll(',', '.'));
