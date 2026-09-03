@@ -24,7 +24,7 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
   final _tamanhoHerbaceoController = TextEditingController();
   final _localidadeController = TextEditingController();
 
-  String? _fisionomia;
+  String _fisionomia = 'Floresta Estacional Semidecidual';
   String _metodo = 'Parcela';
   String? _estagioSucessional;
   DateTime _dataColeta = DateTime.now();
@@ -102,7 +102,7 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
     final parcela = Parcela(
       id: widget.parcela?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       nomeParcela: _nomeController.text.trim(),
-      fisionomia: _fisionomia!,
+      fisionomia: _fisionomia,
       dataColeta: _dataColeta,
       responsavel: _responsavelController.text.trim().isEmpty
           ? null
