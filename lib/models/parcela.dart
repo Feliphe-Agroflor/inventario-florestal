@@ -40,6 +40,9 @@ class Parcela extends HiveObject {
   @HiveField(12)
   String? localidade;
 
+  @HiveField(13)
+  String? estagioSucessional;
+
   Parcela({
     required this.id,
     required this.nomeParcela,
@@ -53,5 +56,6 @@ class Parcela extends HiveObject {
     this.tamanhoParcelaArbustivo,
     this.tamanhoParcelaHerbaceo,
     this.localidade,
+    this.estagioSucessional,
   });
 }

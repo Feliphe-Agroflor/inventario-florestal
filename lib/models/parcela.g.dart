@@ -23,13 +23,14 @@ class ParcelaAdapter extends TypeAdapter<Parcela> {
       tamanhoParcelaArbustivo: fields[10] as double?,
       tamanhoParcelaHerbaceo: fields[11] as double?,
       localidade: fields[12] as String?,
+      estagioSucessional: fields[13] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Parcela obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -53,7 +54,9 @@ class ParcelaAdapter extends TypeAdapter<Parcela> {
       ..writeByte(11)
       ..write(obj.tamanhoParcelaHerbaceo)
       ..writeByte(12)
-      ..write(obj.localidade);
+      ..write(obj.localidade)
+      ..writeByte(13)
+      ..write(obj.estagioSucessional);
   }
 
   @override

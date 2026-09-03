@@ -26,6 +26,7 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
 
   String? _fisionomia;
   String _metodo = 'Parcela';
+  String? _estagioSucessional;
   DateTime _dataColeta = DateTime.now();
   List<String> _responsaveisSugestoes = [];
   List<String> _identificadoresSugestoes = [];
@@ -38,6 +39,12 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
     'Árvores isoladas',
   ];
 
+  final List<String> _estagiosSucessionais = [
+    'Inicial',
+    'Médio',
+    'Avançado',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +54,7 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
       _nomeController.text = widget.parcela!.nomeParcela;
       _fisionomia = widget.parcela!.fisionomia;
       _metodo = widget.parcela!.metodo;
+      _estagioSucessional = widget.parcela!.estagioSucessional;
       _dataColeta = widget.parcela!.dataColeta;
       _responsavelController.text = widget.parcela!.responsavel ?? '';
       _observacoesController.text = widget.parcela!.observacoes ?? '';
@@ -118,6 +126,7 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
       localidade: _localidadeController.text.trim().isEmpty
           ? null
           : _localidadeController.text.trim(),
+      estagioSucessional: _fisionomia == 'Floresta Estacional Semidecidual' ? _estagioSucessional : null,
     );
 
     await DatabaseHelper.instance.insertParcela(parcela);
@@ -154,7 +163,7 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DropdownButtonFormField<String>(
-                value: _metodo,
+                initialValue: _metodo,
                 decoration: const InputDecoration(
                   labelText: 'Método *',
                   border: OutlineInputBorder(),
@@ -228,7 +237,7 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
               ],
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _fisionomia,
+                initialValue: _fisionomia,
                 decoration: const InputDecoration(
                   labelText: 'Fisionomia *',
                   border: OutlineInputBorder(),
@@ -249,6 +258,23 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
                   return null;
                 },
               ),
+              if (_fisionomia == 'Floresta Estacional Semidecidual') ...[
+                const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: _estagioSucessional,
+                decoration: const InputDecoration(
+                  labelText: 'Estágio Sucessional',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.eco),
+                ),
+                items: _estagiosSucessionais.map((e) {
+                  return DropdownMenuItem(value: e, child: Text(e));
+                }).toList(),
+                onChanged: (value) {
+                  setState(() => _estagioSucessional = value);
+                },
+              ),
+              ],
               const SizedBox(height: 16),
               TextFormField(
                 controller: _localidadeController,
