@@ -636,6 +636,7 @@ class _IndividuosSpreadsheetScreenState
                           ..._displayRows.asMap().entries.map(
                               (e) => _buildDataRow(e.key, e.value, colWidths)),
                           _buildAddRow(colWidths),
+                          const SizedBox(height: 300),
                         ],
                       ),
                     ),
