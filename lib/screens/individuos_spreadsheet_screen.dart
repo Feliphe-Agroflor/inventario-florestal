@@ -609,7 +609,7 @@ class _IndividuosSpreadsheetScreenState
         if (_showFustes) flexes.add(2);
         if (_requiresDiametroCopa) flexes.add(2);
         if (_requiresDiametroCopa) flexes.add(2);
-        if (_showFustes) flexes.add(2);
+        if (_showFustes && widget.estrato == 'Arbóreo') flexes.add(2);
         flexes.add(2);
         flexes.add(1.2);
         final totalFlex = flexes.fold(0.0, (a, b) => a + b);
@@ -675,7 +675,7 @@ class _IndividuosSpreadsheetScreenState
           if (_showFustes) _headerCell('CAP (cm)', w[i++]),
           if (_requiresDiametroCopa) _headerCell('Copa 1 (m)', w[i++]),
           if (_requiresDiametroCopa) _headerCell('Copa 2 (m)', w[i++]),
-          if (_showFustes) _headerCell('Epífitas', w[i++]),
+          if (_showFustes && widget.estrato == 'Arbóreo') _headerCell('Epífitas', w[i++]),
           _headerCell('Data', w[i++]),
           _headerCell('', w[i++]),
         ],
@@ -962,7 +962,7 @@ class _IndividuosSpreadsheetScreenState
             _emptyCell(w[i++]),
             _emptyCell(w[i++]),
           ],
-          if (_showFustes) _epifitasCell(fuste, w[i++]),
+          if (_showFustes && widget.estrato == 'Arbóreo') _epifitasCell(ind, fuste, w[i++]),
           _dateCell(ind, w[i++]),
           _actionsCell(ind, row, w[i++]),
         ],
@@ -993,7 +993,7 @@ class _IndividuosSpreadsheetScreenState
           if (_showFustes) _emptyCell(w[i++]),
           if (_requiresDiametroCopa) _emptyCell(w[i++]),
           if (_requiresDiametroCopa) _emptyCell(w[i++]),
-          if (_showFustes) _emptyCell(w[i++]),
+          if (_showFustes && widget.estrato == 'Arbóreo') _emptyCell(w[i++]),
           _emptyCell(w[i++]),
           _emptyCell(w[i++]),
         ],
@@ -1047,8 +1047,22 @@ class _IndividuosSpreadsheetScreenState
     );
   }
 
-  Widget _epifitasCell(Fuste? fuste, double width) {
+  Widget _epifitasCell(Individuo ind, Fuste? fuste, double width) {
     final isSelected = fuste?.epifitas == true;
+    if (isSelected) {
+      return _cellWithSuggestions(
+        value: ind.epifitasDetalhes ?? '',
+        width: width,
+        options: [],
+        keyboardType: TextInputType.text,
+        readOnly: false,
+        cellKey: 'epif_${fuste?.id ?? ind.id}',
+        onFieldChanged: (v) {
+          ind.epifitasDetalhes = v;
+          _saveIndividuo(ind);
+        },
+      );
+    }
     return GestureDetector(
       onTap: fuste != null
           ? () {
