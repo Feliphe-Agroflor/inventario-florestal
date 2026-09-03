@@ -51,6 +51,7 @@ class _IndividuosSpreadsheetScreenState
   bool _isExpanding = false;
   bool _isFilteringActive = false;
   Map<String, Set<String>> _columnFilters = {};
+  final Set<String> _validatedIds = {};
 
   bool get _isHerbaceo => widget.estrato == 'Herbáceo';
   bool get _isFloristica => widget.estrato == 'Florística';
@@ -223,6 +224,10 @@ class _IndividuosSpreadsheetScreenState
   Future<void> _addNewIndividuo() async {
     await _expandPendingIndividuos();
 
+    if (_individuos.isNotEmpty) {
+      _validatedIds.add(_individuos.last.individuo.id);
+    }
+
     final nextNum = DatabaseHelper.instance
         .getNextIndividuoNumero(widget.parcela.id, widget.estrato);
     final subP = _hasSubParcelas ? _currentSubParcela : 1;
@@ -320,32 +325,38 @@ class _IndividuosSpreadsheetScreenState
   }
 
   bool _hasAlturaError(Individuo ind, Fuste fuste) {
+    if (!_validatedIds.contains(ind.id)) return false;
     final estrato = ind.estrato;
     final fisionomia = widget.parcela.fisionomia;
     final metodo = widget.parcela.metodo;
 
     if (estrato == 'Herbáceo' || estrato == 'Florística') return false;
 
+    if (fuste.altura <= 0) return true;
+
     if (estrato == 'Arbóreo' || (metodo == 'Censo' && estrato == 'Censo')) {
-      if (fuste.altura > 0 && fuste.altura < 2) return true;
+      if (fuste.altura < 2) return true;
     }
 
     if (estrato == 'Arbustivo' && fisionomia != 'Campo Rupestre') {
-      if (fuste.altura > 0 && fuste.altura < 1.5) return true;
+      if (fuste.altura < 1.5) return true;
     }
 
     return false;
   }
 
   bool _hasCapError(Individuo ind, Fuste fuste) {
+    if (!_validatedIds.contains(ind.id)) return false;
     final estrato = ind.estrato;
     final fisionomia = widget.parcela.fisionomia;
     final metodo = widget.parcela.metodo;
 
     if (estrato == 'Herbáceo' || estrato == 'Florística') return false;
 
+    if (fuste.cap <= 0) return true;
+
     if (estrato == 'Arbóreo' || (metodo == 'Censo' && estrato == 'Censo')) {
-      if (fuste.cap > 0 && fuste.cap < 15) return true;
+      if (fuste.cap < 15) return true;
     }
 
     if (estrato == 'Arbustivo' && fisionomia != 'Campo Rupestre') {
@@ -356,6 +367,7 @@ class _IndividuosSpreadsheetScreenState
   }
 
   bool _hasNomeError(Individuo ind) {
+    if (!_validatedIds.contains(ind.id)) return false;
     return ind.nomeComum.isEmpty &&
         ind.nomeCientifico.isEmpty &&
         ind.familia.isEmpty;
@@ -363,6 +375,7 @@ class _IndividuosSpreadsheetScreenState
 
   bool _hasCopaError(Individuo ind) {
     if (!_requiresDiametroCopa) return false;
+    if (!_validatedIds.contains(ind.id)) return false;
     return ind.diametroCopa1 == null && ind.diametroCopa2 == null;
   }
 
