@@ -1048,65 +1048,23 @@ class _IndividuosSpreadsheetScreenState
   }
 
   Widget _epifitasCell(Individuo ind, Fuste? fuste, double width) {
-    final isSelected = fuste?.epifitas == true;
-    if (isSelected) {
-      return _cellWithSuggestions(
-        value: ind.epifitasDetalhes ?? '',
-        width: width,
-        options: [],
-        keyboardType: TextInputType.text,
-        readOnly: false,
-        cellKey: 'epif_${fuste?.id ?? ind.id}',
-        onFieldChanged: (v) {
-          ind.epifitasDetalhes = v;
-          _saveIndividuo(ind);
-        },
-      );
-    }
-    return GestureDetector(
-      onTap: fuste != null
-          ? () {
-              fuste.epifitas = isSelected ? null : true;
-              _saveFuste(fuste);
-              setState(() {});
-            }
-          : null,
-      child: Container(
-        width: width,
-        height: 48,
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!, width: 0.5),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: isSelected ? Colors.green : Colors.grey[400]!,
-                  width: 1.5,
-                ),
-                color: isSelected ? Colors.green[50] : null,
-              ),
-              child: isSelected
-                  ? const Icon(Icons.check, size: 12, color: Colors.green)
-                  : null,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              'Sim',
-              style: TextStyle(
-                fontSize: 11,
-                color: isSelected ? Colors.black87 : Colors.grey[500],
-              ),
-            ),
-          ],
-        ),
-      ),
+    return _cellWithSuggestions(
+      value: ind.epifitasDetalhes ?? '',
+      width: width,
+      options: [],
+      keyboardType: TextInputType.text,
+      readOnly: false,
+      cellKey: 'epif_${fuste?.id ?? ind.id}',
+      onFieldChanged: (v) {
+        ind.epifitasDetalhes = v;
+        if (v.isNotEmpty) {
+          fuste?.epifitas = true;
+        } else {
+          fuste?.epifitas = null;
+        }
+        _saveIndividuo(ind);
+        _saveFuste(fuste!);
+      },
     );
   }
 
