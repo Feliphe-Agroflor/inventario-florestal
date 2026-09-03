@@ -1252,9 +1252,6 @@ class _AutocompleteCellState extends State<_AutocompleteCell> {
 
   void _onFocusChanged() {
     if (!_focusNode.hasFocus) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _removeOverlay();
-      });
       widget.onFocusLost?.call();
     }
   }
