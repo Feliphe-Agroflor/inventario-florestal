@@ -892,36 +892,34 @@ class _IndividuosSpreadsheetScreenState
         width: width,
         height: 44,
         padding: const EdgeInsets.symmetric(horizontal: 8),
-        alignment: Alignment.center,
         decoration: BoxDecoration(
           border: Border.all(color: Colors.green[900]!, width: 0.5),
           color: hasFilter ? Colors.green[600] : null,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            Flexible(
-              child: Text(
-                text,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
               ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            if (_isFilteringActive && columnKey != null) ...[
-              const SizedBox(width: 4),
-              Icon(
-                hasFilter ? Icons.filter_list : Icons.tune,
-                size: 14,
-                color: hasFilter ? Colors.yellow : Colors.white70,
+            if (_isFilteringActive && columnKey != null)
+              Positioned(
+                right: 2,
+                top: 2,
+                child: Icon(
+                  hasFilter ? Icons.filter_list : Icons.tune,
+                  size: 14,
+                  color: hasFilter ? Colors.yellow : Colors.white70,
+                ),
               ),
-            ],
           ],
         ),
       ),
