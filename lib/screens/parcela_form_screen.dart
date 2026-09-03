@@ -260,20 +260,45 @@ class _ParcelaFormScreenState extends State<ParcelaFormScreen> {
               ),
               if (_fisionomia == 'Floresta Estacional Semidecidual') ...[
                 const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: _estagioSucessional,
-                decoration: const InputDecoration(
-                  labelText: 'Estágio Sucessional',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.eco),
+                Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Estágio Sucessional',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green[800],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: _estagiosSucessionais.map((e) {
+                            final isSelected = _estagioSucessional == e;
+                            return ChoiceChip(
+                              label: Text(
+                                e,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isSelected ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                              selected: isSelected,
+                              selectedColor: Colors.green[800],
+                              onSelected: (_) => setState(() => _estagioSucessional = e),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                items: _estagiosSucessionais.map((e) {
-                  return DropdownMenuItem(value: e, child: Text(e));
-                }).toList(),
-                onChanged: (value) {
-                  setState(() => _estagioSucessional = value);
-                },
-              ),
               ],
               const SizedBox(height: 16),
               TextFormField(
