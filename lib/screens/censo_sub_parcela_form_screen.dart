@@ -102,7 +102,7 @@ class _CensoSubParcelaFormScreenState extends State<CensoSubParcelaFormScreen> {
   @override
   Widget build(BuildContext context) {
     final isArbustivo = widget.estrato == 'Arbustivo';
-    final isHerbaceo = widget.estrato == 'Herbaceo';
+    final isHerbaceo = widget.estrato == 'Herbáceo';
     final showTamanhoParcela = isArbustivo || isHerbaceo;
 
     return Scaffold(
