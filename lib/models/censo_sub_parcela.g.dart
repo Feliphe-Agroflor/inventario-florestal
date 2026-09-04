@@ -17,13 +17,14 @@ class CensoSubParcelaAdapter extends TypeAdapter<CensoSubParcela> {
       codigo: fields[3] as String,
       data: fields[4] as DateTime,
       observacoes: fields[5] as String?,
+      tamanhoParcela: fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, CensoSubParcela obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -35,7 +36,9 @@ class CensoSubParcelaAdapter extends TypeAdapter<CensoSubParcela> {
       ..writeByte(4)
       ..write(obj.data)
       ..writeByte(5)
-      ..write(obj.observacoes);
+      ..write(obj.observacoes)
+      ..writeByte(6)
+      ..write(obj.tamanhoParcela);
   }
 
   @override

@@ -135,7 +135,7 @@ class _CensoSubParcelasListScreenState
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(
-                      '${DateFormat('dd/MM/yyyy').format(sub.data)} · $count indivíduo${count != 1 ? 's' : ''}',
+                      '${DateFormat('dd/MM/yyyy').format(sub.data)}${sub.tamanhoParcela != null ? ' · ${sub.tamanhoParcela}' : ''} · $count indivíduo${count != 1 ? 's' : ''}',
                       style: TextStyle(color: Colors.grey[600], fontSize: 12),
                     ),
                     trailing: Row(

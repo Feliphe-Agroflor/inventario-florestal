@@ -22,6 +22,9 @@ class CensoSubParcela extends HiveObject {
   @HiveField(5)
   String? observacoes;
 
+  @HiveField(6)
+  String? tamanhoParcela;
+
   CensoSubParcela({
     required this.id,
     required this.parcelaId,
@@ -29,5 +32,6 @@ class CensoSubParcela extends HiveObject {
     required this.codigo,
     required this.data,
     this.observacoes,
+    this.tamanhoParcela,
   });
 }

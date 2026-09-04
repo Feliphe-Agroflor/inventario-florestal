@@ -24,6 +24,7 @@ class CensoSubParcelaFormScreen extends StatefulWidget {
 class _CensoSubParcelaFormScreenState extends State<CensoSubParcelaFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _codigoController = TextEditingController();
+  final _tamanhoParcelaController = TextEditingController();
   final _observacoesController = TextEditingController();
   DateTime _data = DateTime.now();
 
@@ -32,6 +33,7 @@ class _CensoSubParcelaFormScreenState extends State<CensoSubParcelaFormScreen> {
     super.initState();
     if (widget.subParcela != null) {
       _codigoController.text = widget.subParcela!.codigo;
+      _tamanhoParcelaController.text = widget.subParcela!.tamanhoParcela ?? '';
       _data = widget.subParcela!.data;
       _observacoesController.text = widget.subParcela!.observacoes ?? '';
     }
@@ -40,6 +42,7 @@ class _CensoSubParcelaFormScreenState extends State<CensoSubParcelaFormScreen> {
   @override
   void dispose() {
     _codigoController.dispose();
+    _tamanhoParcelaController.dispose();
     _observacoesController.dispose();
     super.dispose();
   }
@@ -74,6 +77,9 @@ class _CensoSubParcelaFormScreenState extends State<CensoSubParcelaFormScreen> {
       observacoes: _observacoesController.text.trim().isEmpty
           ? null
           : _observacoesController.text.trim(),
+      tamanhoParcela: _tamanhoParcelaController.text.trim().isEmpty
+          ? null
+          : _tamanhoParcelaController.text.trim(),
     );
 
     await DatabaseHelper.instance.insertCensoSubParcela(subParcela);
@@ -96,6 +102,8 @@ class _CensoSubParcelaFormScreenState extends State<CensoSubParcelaFormScreen> {
   @override
   Widget build(BuildContext context) {
     final isArbustivo = widget.estrato == 'Arbustivo';
+    final isHerbaceo = widget.estrato == 'Herbaceo';
+    final showTamanhoParcela = isArbustivo || isHerbaceo;
 
     return Scaffold(
       appBar: AppBar(
@@ -126,6 +134,18 @@ class _CensoSubParcelaFormScreenState extends State<CensoSubParcelaFormScreen> {
                   return null;
                 },
               ),
+              if (showTamanhoParcela) ...[
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _tamanhoParcelaController,
+                  decoration: const InputDecoration(
+                    labelText: 'Tamanho da parcela',
+                    hintText: 'Ex: 1x1m, 2x2m',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.square_foot),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               Row(
                 children: [
