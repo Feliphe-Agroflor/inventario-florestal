@@ -818,11 +818,11 @@ class _IndividuosSpreadsheetScreenState
         final List<double> flexes = [];
         if (_showFustes) flexes.add(1.5);
         if (_showFustes) flexes.add(1.5);
+        if (_isCenso) flexes.add(2);
         if (_isHerbaceo) flexes.add(1.5);
         flexes.add(3);
         flexes.add(3);
         flexes.add(2.5);
-        if (_isCenso) flexes.add(2);
         if (_isHerbaceo) flexes.add(2);
         if (_isHerbaceo && widget.parcela.fisionomia == 'Campo Rupestre') {
           flexes.add(2);
@@ -831,7 +831,7 @@ class _IndividuosSpreadsheetScreenState
         if (_showFustes) flexes.add(2);
         if (_requiresDiametroCopa) flexes.add(2);
         if (_requiresDiametroCopa) flexes.add(2);
-        if (_showFustes && widget.estrato == 'Arbóreo') flexes.add(2);
+        if (_showFustes && (widget.estrato == 'Arbóreo' || widget.parcela.metodo == 'Censo')) flexes.add(2);
         flexes.add(2);
         flexes.add(1.2);
         final totalFlex = flexes.fold(0.0, (a, b) => a + b);
@@ -881,11 +881,11 @@ class _IndividuosSpreadsheetScreenState
         children: [
           if (_showFustes) _headerCell('Nº', w[i++], columnKey: 'numero'),
           if (_showFustes) _headerCell('Fuste', w[i++], columnKey: 'fuste'),
+          if (_isCenso) _headerCell('Nº GPS', w[i++]),
           if (_isHerbaceo) _headerCell('Nº', w[i++], columnKey: 'numero'),
           _headerCell('Nome Comum', w[i++], columnKey: 'nomeComum'),
           _headerCell('Nome Científico', w[i++], columnKey: 'nomeCientifico'),
           _headerCell('Família', w[i++], columnKey: 'familia'),
-          if (_isCenso) _headerCell('Nº GPS', w[i++]),
           if (_isHerbaceo)
             _headerCell(
                 widget.parcela.fisionomia == 'Campo Rupestre'
@@ -898,7 +898,7 @@ class _IndividuosSpreadsheetScreenState
           if (_showFustes) _headerCell('CAP (cm)', w[i++], columnKey: 'cap'),
           if (_requiresDiametroCopa) _headerCell('Copa 1 (m)', w[i++], columnKey: 'copa1'),
           if (_requiresDiametroCopa) _headerCell('Copa 2 (m)', w[i++], columnKey: 'copa2'),
-          if (_showFustes && widget.estrato == 'Arbóreo') _headerCell('Epífitas', w[i++], columnKey: 'epifitas'),
+          if (_showFustes && (widget.estrato == 'Arbóreo' || widget.parcela.metodo == 'Censo')) _headerCell('Epífitas', w[i++], columnKey: 'epifitas'),
           _headerCell('Data', w[i++], columnKey: 'data'),
           _headerCell('', w[i++]),
         ],
@@ -996,6 +996,19 @@ class _IndividuosSpreadsheetScreenState
               readOnly: true,
               textStyle: TextStyle(fontSize: 12, color: Colors.grey[700]),
               cellKey: 'fuste_${ind.id}_${fuste?.id ?? "0"}',
+          ),
+          if (_isCenso)
+            _cellWithSuggestions(
+              value: ind.numeroGps?.toString() ?? '',
+              width: w[i++],
+              options: [],
+              keyboardType: TextInputType.number,
+              readOnly: false,
+              cellKey: 'gps_${ind.id}',
+              onFieldChanged: (v) {
+                ind.numeroGps = int.tryParse(v);
+                _saveIndividuo(ind);
+              },
             ),
           if (_isHerbaceo)
             _cellWithSuggestions(
@@ -1060,19 +1073,6 @@ class _IndividuosSpreadsheetScreenState
               _saveIndividuo(ind);
             },
           ),
-          if (_isCenso)
-            _cellWithSuggestions(
-              value: ind.numeroGps?.toString() ?? '',
-              width: w[i++],
-              options: [],
-              keyboardType: TextInputType.number,
-              readOnly: false,
-              cellKey: 'gps_${ind.id}',
-              onFieldChanged: (v) {
-                ind.numeroGps = int.tryParse(v);
-                _saveIndividuo(ind);
-              },
-            ),
           if (_isHerbaceo)
             _cellWithSuggestions(
               value: ind.numeroIndividuos?.toString() ?? '',
@@ -1211,7 +1211,7 @@ class _IndividuosSpreadsheetScreenState
             _emptyCell(w[i++]),
             _emptyCell(w[i++]),
           ],
-          if (_showFustes && widget.estrato == 'Arbóreo') _epifitasCell(ind, fuste, w[i++]),
+          if (_showFustes && (widget.estrato == 'Arbóreo' || widget.parcela.metodo == 'Censo')) _epifitasCell(ind, fuste, w[i++]),
           _dateCell(ind, w[i++]),
           _actionsCell(ind, row, w[i++]),
         ],
@@ -1230,11 +1230,11 @@ class _IndividuosSpreadsheetScreenState
             _addCell(w[i++], onTap: _addNewIndividuo),
           if (_showFustes)
             _addCell(w[i++], onTap: _addFusteToLastIndividuo),
+          if (_isCenso) _emptyCell(w[i++]),
           if (_isHerbaceo) _addCell(w[i++], onTap: _addNewIndividuo),
           _emptyCell(w[i++]),
           _emptyCell(w[i++]),
           _emptyCell(w[i++]),
-          if (_isCenso) _emptyCell(w[i++]),
           if (_isHerbaceo) _emptyCell(w[i++]),
           if (_isHerbaceo && widget.parcela.fisionomia == 'Campo Rupestre')
             _emptyCell(w[i++]),
@@ -1242,7 +1242,7 @@ class _IndividuosSpreadsheetScreenState
           if (_showFustes) _emptyCell(w[i++]),
           if (_requiresDiametroCopa) _emptyCell(w[i++]),
           if (_requiresDiametroCopa) _emptyCell(w[i++]),
-          if (_showFustes && widget.estrato == 'Arbóreo') _emptyCell(w[i++]),
+          if (_showFustes && (widget.estrato == 'Arbóreo' || widget.parcela.metodo == 'Censo')) _emptyCell(w[i++]),
           _emptyCell(w[i++]),
           _emptyCell(w[i++]),
         ],
